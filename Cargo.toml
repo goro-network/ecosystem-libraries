@@ -1,0 +1,28 @@
+[workspace.package]
+authors = [
+    "GORO Contributors <https://github.com/goro-network>",
+    "GORO Core Developers <dev@goro.network>",
+]
+edition = "2021"
+license = "MIT"
+publish = false
+repository = "https://github.com/goro-network/ecosystem-libraries"
+version = "1.0.0-alpha.11"
+
+[workspace]
+resolver = "2"
+members = ["crate-logging"]
+
+[patch.crates-io]
+ss58-registry = { git = "https://github.com/goro-network/ss58-registry", rev = "30889d6" }
+
+[workspace.dependencies]
+console_log = { version = "1.0.0", features = ["color", "wasm-bindgen"] }
+env_logger = { version = "0.10.0" }
+log = { version = "0.4.20", default-features = false, features = [
+    "max_level_debug",
+    "release_max_level_info",
+    "serde",
+] }
+serde = { version = "1.0.188", default-features = false, features = ["derive"] }
+ss58-registry = { git = "https://github.com/goro-network/ss58-registry", rev = "30889d6" }

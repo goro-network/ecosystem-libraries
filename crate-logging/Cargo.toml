@@ -1,0 +1,19 @@
+[package]
+name = "goro-logging"
+description = "GORO Network - Logging"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[features]
+default = ["env_logger"] # only use this for binary/app target
+wasm32 = ["console_log"] # wasm32-unknown-emscripten/wasm32-unknown-unknown
+
+[dependencies]
+console_log = { workspace = true, optional = true }
+env_logger = { workspace = true, optional = true }
+log.workspace = true
+serde.workspace = true

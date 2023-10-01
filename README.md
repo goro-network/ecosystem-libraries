@@ -10,4 +10,4 @@ Contains shared libraries for:
 
 ## Libraries
 
-- TBA
+- [Logging](./crate-logging/README.md)
