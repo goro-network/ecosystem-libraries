@@ -4,3 +4,5 @@ temp/
 **/*.gorofile
 **/*.identity.json
 **/*.key
+
+Cargo.lock

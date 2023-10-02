@@ -6,3 +6,5 @@ temp/
 **/*.identity.json
 **/*.key
 **/*Dockerfile
+
+Cargo.lock

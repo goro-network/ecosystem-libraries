@@ -1,0 +1,36 @@
+[package]
+name = "goro-identities"
+description = "GORO Network - Identity Library"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+arrayvec.workspace = true
+bitvec.workspace = true
+blake2.workspace = true
+bs58.workspace = true
+ed25519-dalek.workspace = true
+getrandom.workspace = true
+hex.workspace = true
+itertools.workspace = true
+parity-scale-codec.workspace = true
+pbkdf2.workspace = true
+schnorrkel.workspace = true
+serde.workspace = true
+sha2.workspace = true
+ss58-registry.workspace = true
+thiserror-no-std.workspace = true
+zeroize.workspace = true
+
+[dev-dependencies]
+sp-core = "23.0.0"
+test-case = { version = "3.2.1", features = ["with-regex"] }
+
+[features]
+default = []
+aarch64 = ["zeroize/aarch64"]
+wasm32 = ["getrandom/js"]
