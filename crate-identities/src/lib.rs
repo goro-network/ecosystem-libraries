@@ -3,6 +3,9 @@
 #![allow(clippy::large_enum_variant)]
 #![deny(warnings)]
 
+#[cfg(all(feature = "aarch64", feature = "wasm32"))]
+compile_error!("Feature \"aarch64\" can't be combined with \"wasm32\".");
+
 pub mod errors;
 pub mod mnemonic;
 pub mod private;
