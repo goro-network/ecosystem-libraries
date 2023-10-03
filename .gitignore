@@ -6,3 +6,4 @@ temp/
 **/*.key
 
 Cargo.lock
+features-inspect.txt

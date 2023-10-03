@@ -13,12 +13,14 @@ arrayvec.workspace = true
 bitvec.workspace = true
 blake2.workspace = true
 bs58.workspace = true
+curve25519-dalek.workspace = true
 ed25519-dalek.workspace = true
 getrandom.workspace = true
 hex.workspace = true
 itertools.workspace = true
 parity-scale-codec.workspace = true
 pbkdf2.workspace = true
+rand = { version = "0.8.5", default-features = false, features = ["getrandom"] }
 schnorrkel.workspace = true
 serde.workspace = true
 sha2.workspace = true

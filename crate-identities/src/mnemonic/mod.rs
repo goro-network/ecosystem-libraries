@@ -3,8 +3,8 @@ use bitvec::view::BitView;
 use core::str::FromStr;
 use sha2::Digest;
 
-mod mini_secret;
-mod words;
+pub mod mini_secret;
+pub mod words;
 
 pub const CHECKSUM_BIT: u8 = 4;
 pub const LEN_ENTROPY_KDF_ROUND: usize = 2048;
@@ -152,6 +152,16 @@ impl core::convert::TryFrom<&str> for MnemonicPhrase {
         Ok(Self {
             inner,
         })
+    }
+}
+
+impl core::convert::TryFrom<MnemonicPhrase> for schnorrkel::MiniSecretKey {
+    type Error = crate::errors::Error;
+
+    fn try_from(value: MnemonicPhrase) -> Result<Self, Self::Error> {
+        let entropy = value.try_get_entropy()?;
+
+        mini_secret::sr25519_mini_secret_from_entropy(entropy.as_ref(), "")
     }
 }
 

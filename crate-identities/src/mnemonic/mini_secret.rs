@@ -35,7 +35,7 @@ pub fn sr25519_mini_secret_from_entropy(
     let seed = seed_from_entropy(entropy, password)?;
 
     Ok(
-        schnorrkel::MiniSecretKey::from_bytes(&seed[..crate::private::LEN_PRIVATE_KEY])
+        schnorrkel::MiniSecretKey::from_bytes(&seed[..crate::private::PrivateKey::LEN_PRIVATE_KEY])
             .expect("Should be infallible!"),
     )
 }
@@ -90,7 +90,7 @@ mod tests {
         assert_eq!(&seed[..], &expected_seed[..]);
         assert_eq!(
             &secret_bytes[..],
-            &expected_seed[..crate::private::LEN_PRIVATE_KEY]
+            &expected_seed[..crate::private::PrivateKey::LEN_PRIVATE_KEY]
         );
     }
 }
