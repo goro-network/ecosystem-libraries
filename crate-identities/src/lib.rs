@@ -315,7 +315,10 @@ mod tests {
     extern crate alloc;
 
     use super::*;
+    use crate::private::PrivateKeyBytes;
     use alloc::format;
+    use alloc::string::ToString;
+    use core::ops::Deref;
     use hex::decode;
     use sp_core::crypto::Ss58Codec;
     use sp_core::ed25519::{
@@ -335,6 +338,7 @@ mod tests {
         "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
     const TEST_MNEMONIC_SS58_ED25519: &str = "gr4RyyaYMXAUDghwBPGePHhU8Muncg2UA3dGa7btdxySRBEge";
     const TEST_MNEMONIC_SS58_SR25519: &str = "gr3UANwp2xZ4DCsbGKaeNPEaUWfZSBqZZ2qM5Mmsm8UN3tWfz";
+    const RANDOM_TEST_COUNT: usize = 128;
 
     #[test]
     fn alice_sr25519_signing_is_correct() {
@@ -385,6 +389,19 @@ mod tests {
     }
 
     #[test]
+    fn sr25519_generate_from_mnemonic_is_correct() {
+        let (substrate_identity, _) = Sr25519KeyPair::from_phrase(TEST_MNEMONIC, None).unwrap();
+        let substrate_identity = substrate_identity.public();
+        let substrate_identity =
+            substrate_identity.to_ss58check_with_version(Ss58AddressFormatRegistry::GoroAccount.into());
+        let identity = CryptographicIdentity::try_from_private_str(TEST_MNEMONIC).unwrap();
+        let sr25519_address = identity.try_get_public_sr25519().unwrap().get_goro_address();
+
+        assert_eq!(sr25519_address.as_str(), TEST_MNEMONIC_SS58_SR25519);
+        assert_eq!(sr25519_address.as_str(), substrate_identity);
+    }
+
+    #[test]
     fn ed25519_generate_from_mnemonic_is_correct() {
         let (substrate_identity, _) = Ed25519KeyPair::from_phrase(TEST_MNEMONIC, None).unwrap();
         let substrate_identity = substrate_identity.public();
@@ -398,15 +415,50 @@ mod tests {
     }
 
     #[test]
-    fn sr25519_generate_from_mnemonic_is_correct() {
-        let (substrate_identity, _) = Sr25519KeyPair::from_phrase(TEST_MNEMONIC, None).unwrap();
-        let substrate_identity = substrate_identity.public();
-        let substrate_identity =
-            substrate_identity.to_ss58check_with_version(Ss58AddressFormatRegistry::GoroAccount.into());
-        let identity = CryptographicIdentity::try_from_private_str(TEST_MNEMONIC).unwrap();
-        let sr25519_address = identity.try_get_public_sr25519().unwrap().get_goro_address();
+    fn many_random_sr25519_is_generated_correctly() {
+        for _ in 0..RANDOM_TEST_COUNT {
+            let random_mnemonic = crate::mnemonic::MnemonicPhrase::generate();
+            let error_message = format!("Error on mnemonic: \"{}\"", random_mnemonic.deref());
+            let (substrate_sr25519_keypair, substrate_secret_seed_bytes) =
+                Sr25519KeyPair::from_phrase(&random_mnemonic, None).expect(&error_message);
+            let substrate_goro_ss58 = substrate_sr25519_keypair
+                .public()
+                .to_ss58check_with_version(Ss58AddressFormatRegistry::GoroAccount.into());
+            let substrate_sr25519_public_bytes = substrate_sr25519_keypair.public().0;
+            let goro_keypair =
+                CryptographicIdentity::try_from_private_str(&random_mnemonic).expect(&error_message);
+            let goro_private_key_bytes = PrivateKeyBytes::from(goro_keypair.try_get_private_key().unwrap());
+            let goro_sr25519_public_key = goro_keypair.try_get_public_sr25519().unwrap();
+            let goro_ss58 = goro_sr25519_public_key.get_goro_address();
+            let goro_sr25519_public_bytes = goro_sr25519_public_key.to_bytes();
 
-        assert_eq!(sr25519_address.as_str(), TEST_MNEMONIC_SS58_SR25519);
-        assert_eq!(sr25519_address.as_str(), substrate_identity);
+            assert_eq!(goro_private_key_bytes, substrate_secret_seed_bytes);
+            assert_eq!(goro_sr25519_public_bytes, substrate_sr25519_public_bytes);
+            assert_eq!(goro_ss58.to_string(), substrate_goro_ss58);
+        }
+    }
+
+    #[test]
+    fn many_random_ed25519_is_generated_correctly() {
+        for _ in 0..RANDOM_TEST_COUNT {
+            let random_mnemonic = crate::mnemonic::MnemonicPhrase::generate();
+            let error_message = format!("Error on mnemonic: \"{}\"", random_mnemonic.deref());
+            let (substrate_ed25519_keypair, substrate_secret_seed_bytes) =
+                Ed25519KeyPair::from_phrase(&random_mnemonic, None).expect(&error_message);
+            let substrate_goro_ss58 = substrate_ed25519_keypair
+                .public()
+                .to_ss58check_with_version(Ss58AddressFormatRegistry::GoroAccount.into());
+            let substrate_ed25519_public_bytes = substrate_ed25519_keypair.public().0;
+            let goro_keypair =
+                CryptographicIdentity::try_from_private_str(&random_mnemonic).expect(&error_message);
+            let goro_private_key_bytes = PrivateKeyBytes::from(goro_keypair.try_get_private_key().unwrap());
+            let goro_ed25519_public_key = goro_keypair.try_get_public_ed25519().unwrap();
+            let goro_ss58 = goro_ed25519_public_key.get_goro_address();
+            let goro_ed25519_public_bytes = goro_keypair.try_get_public_ed25519().unwrap().to_bytes();
+
+            assert_eq!(goro_private_key_bytes, substrate_secret_seed_bytes);
+            assert_eq!(goro_ed25519_public_bytes, substrate_ed25519_public_bytes);
+            assert_eq!(goro_ss58.to_string(), substrate_goro_ss58);
+        }
     }
 }
