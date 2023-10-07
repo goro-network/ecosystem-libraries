@@ -1,0 +1,22 @@
+[package]
+name = "goro-cv25519auth-actix"
+description = "GORO Network - Authentication Middleware for Actix Web"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+actix-http.workspace = true
+actix-web.workspace = true
+futures.workspace = true
+goro-identities.workspace = true
+goro-logging = { workspace = true, default-features = true }
+hex = { workspace = true, default-features = true }
+
+[dev-dependencies]
+actix-rt = "2.9.0"
+actix-web = { workspace = true, features = ["macros"] }
+sp-core = "24.0.0"

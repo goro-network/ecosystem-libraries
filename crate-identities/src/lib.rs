@@ -19,6 +19,7 @@ pub const LEN_SHARED_KEY: usize = 64;
 pub const LEN_SIGNATURE: usize = 64;
 pub const SIGNING_CONTEXT_SR25519: &[u8] = b"substrate";
 
+#[derive(Clone)]
 #[derive(zeroize::Zeroize, zeroize::ZeroizeOnDrop)]
 pub enum CryptographicIdentity {
     OwnedKey {

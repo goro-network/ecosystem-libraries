@@ -11,16 +11,19 @@ version = "1.0.0-alpha.11"
 
 [workspace]
 resolver = "2"
-members = ["crate-identities", "crate-logging"]
+members = ["crate-cv25519auth-actix", "crate-identities", "crate-logging"]
 
 [patch.crates-io]
 ss58-registry = { git = "https://github.com/goro-network/ss58-registry", rev = "30889d6" }
 
 [workspace.dependencies]
 # monorepo
+goro-cv25519auth-actix = { path = "crate-cv25519auth-actix" }
 goro-identities = { path = "crate-identities" }
 goro-logging = { path = "crate-logging" }
 # crates.io
+actix-http = "3.4.0"
+actix-web = { version = "4.4.0", default-features = false }
 arrayvec = { version = "0.7.4", default-features = false, features = ["serde", "zeroize"] }
 bitvec = { version = "1.0.1", default-features = false }
 blake2 = { version = "0.10.6", default-features = false }
@@ -41,6 +44,7 @@ ed25519-dalek = { version = "2.0.0", default-features = false, features = [
     "zeroize",
 ] }
 env_logger = { version = "0.10.0" }
+futures = { version = "0.3.28", default-features = false }
 getrandom = "0.2.10"
 hex = { version = "0.4.3", default-features = false, features = ["serde"] }
 itertools = { version = "0.11.0", default-features = false }

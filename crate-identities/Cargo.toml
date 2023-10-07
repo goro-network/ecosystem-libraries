@@ -28,7 +28,7 @@ thiserror-no-std.workspace = true
 zeroize.workspace = true
 
 [dev-dependencies]
-sp-core = "23.0.0"
+sp-core = "24.0.0"
 test-case = { version = "3.2.1", features = ["with-regex"] }
 
 [features]
