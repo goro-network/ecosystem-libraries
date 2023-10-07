@@ -15,10 +15,10 @@ members = ["crate-identities", "crate-logging"]
 
 [patch.crates-io]
 ss58-registry = { git = "https://github.com/goro-network/ss58-registry", rev = "30889d6" }
-schnorrkel = { git = "https://github.com/goro-network/schnorrkel", rev = "7eabd4c" }
 
 [workspace.dependencies]
 # monorepo
+goro-identities = { path = "crate-identities" }
 goro-logging = { path = "crate-logging" }
 # crates.io
 arrayvec = { version = "0.7.4", default-features = false, features = ["serde", "zeroize"] }
@@ -58,7 +58,7 @@ parity-scale-codec = { version = "3.6.5", default-features = false, features = [
 pbkdf2 = { version = "0.12.2", default-features = false, features = ["hmac", "sha2"] }
 rand_core = "0.6.4"
 serde = { version = "1.0.188", default-features = false, features = ["derive"] }
-schnorrkel = { version = "0.11.2", default-features = false, features = ["getrandom"] }
+schnorrkel = { version = "0.11.3", default-features = false, features = ["getrandom"] }
 sha2 = { version = "0.10.8", default-features = false }
 ss58-registry = { git = "https://github.com/goro-network/ss58-registry", default-features = false, rev = "30889d6" }
 thiserror-no-std = "2.0.2"

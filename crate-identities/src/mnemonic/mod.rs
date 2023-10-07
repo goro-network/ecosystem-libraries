@@ -33,18 +33,16 @@ impl MnemonicPhrase {
         let checksum = (sha2::Sha256::digest(&entropy[0..LEN_ENTROPY])[0] >> 4) << 4;
         *entropy.last_mut().unwrap() = checksum;
 
-        for (current_iter, slot) in entropy
+        for slot in entropy
             .view_bits::<bitvec::prelude::Msb0>()
             .chunks_exact(LEN_BITS_ENTROPY_CHUNK)
-            .enumerate()
         {
             let word_index = slot.load_be::<u16>() as usize;
             inner.push_str(words::MNEMONIC_WORDS[word_index]);
-
-            if current_iter != LEN_WORDS - 1 {
-                inner.push_str(" ");
-            }
+            inner.push_str(" ");
         }
+
+        inner.truncate(inner.len() - 1);
 
         Self {
             inner,
