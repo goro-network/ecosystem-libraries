@@ -1,26 +1,26 @@
 [workspace.package]
 authors = [
-    "GORO Contributors <https://github.com/goro-network>",
-    "GORO Core Developers <dev@goro.network>",
+    "nagara Contributors <https://github.com/nagara-network>",
+    "nagara Core Developers <dev@nagara.network>",
 ]
 edition = "2021"
 license = "MIT"
 publish = false
-repository = "https://github.com/goro-network/ecosystem-libraries"
-version = "1.0.0-alpha.11"
+repository = "https://github.com/nagara-network/ecosystem-libraries"
+version = "1.0.0-alpha.12"
 
 [workspace]
 resolver = "2"
 members = ["crate-cv25519auth-actix", "crate-identities", "crate-logging"]
 
 [patch.crates-io]
-ss58-registry = { git = "https://github.com/goro-network/ss58-registry", rev = "30889d6" }
+ss58-registry = { git = "https://github.com/nagara-network/ss58-registry", rev = "cc08148" }
 
 [workspace.dependencies]
 # monorepo
-goro-cv25519auth-actix = { path = "crate-cv25519auth-actix" }
-goro-identities = { path = "crate-identities" }
-goro-logging = { path = "crate-logging" }
+nagara-cv25519auth-actix = { path = "crate-cv25519auth-actix" }
+nagara-identities = { path = "crate-identities" }
+nagara-logging = { path = "crate-logging" }
 # crates.io
 actix-http = "3.4.0"
 actix-web = { version = "4.4.0", default-features = false }
@@ -64,6 +64,6 @@ rand_core = "0.6.4"
 serde = { version = "1.0.188", default-features = false, features = ["derive"] }
 schnorrkel = { version = "0.11.3", default-features = false, features = ["getrandom"] }
 sha2 = { version = "0.10.8", default-features = false }
-ss58-registry = { git = "https://github.com/goro-network/ss58-registry", default-features = false, rev = "30889d6" }
+ss58-registry = { git = "https://github.com/nagara-network/ss58-registry", default-features = false, rev = "cc08148" }
 thiserror-no-std = "2.0.2"
 zeroize = { version = "1.6.0", default-features = false, features = ["derive"] }

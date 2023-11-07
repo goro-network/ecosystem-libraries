@@ -1,6 +1,6 @@
 [package]
-name = "goro-cv25519auth-actix"
-description = "GORO Network - Authentication Middleware for Actix Web"
+name = "nagara-cv25519auth-actix"
+description = "nagara Network - Authentication Middleware for Actix Web"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -12,8 +12,8 @@ version.workspace = true
 actix-http.workspace = true
 actix-web.workspace = true
 futures.workspace = true
-goro-identities.workspace = true
-goro-logging = { workspace = true, default-features = true }
+nagara-identities.workspace = true
+nagara-logging = { workspace = true, default-features = true }
 hex = { workspace = true, default-features = true }
 
 [dev-dependencies]

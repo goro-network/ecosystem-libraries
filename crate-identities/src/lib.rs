@@ -322,12 +322,8 @@ mod tests {
     use core::ops::Deref;
     use hex::decode;
     use sp_core::crypto::Ss58Codec;
-    use sp_core::ed25519::{
-        Pair as Ed25519KeyPair, Public as Ed25519PublicKey, Signature as Ed25519Signature,
-    };
-    use sp_core::sr25519::{
-        Pair as Sr25519KeyPair, Public as Sr25519PublicKey, Signature as Sr25519Signature,
-    };
+    use sp_core::ed25519::{Pair as Ed25519KeyPair, Public as Ed25519PublicKey, Signature as Ed25519Signature};
+    use sp_core::sr25519::{Pair as Sr25519KeyPair, Public as Sr25519PublicKey, Signature as Sr25519Signature};
     use sp_core::Pair;
     use ss58_registry::Ss58AddressFormatRegistry;
 
@@ -375,7 +371,7 @@ mod tests {
     fn alice_sr25519_ss58_is_correct() {
         let signer = CryptographicIdentity::try_from_private_str(ALICE_MINISECRET_HEX).unwrap();
         let sr25519_pubkey = signer.try_get_public_sr25519().unwrap();
-        let sr25519_ss58 = format!("{}", sr25519_pubkey.get_goro_address());
+        let sr25519_ss58 = format!("{}", sr25519_pubkey.get_main_address());
 
         assert_eq!(sr25519_ss58, ALICE_SS58_SR25519);
     }
@@ -384,7 +380,7 @@ mod tests {
     fn alice_ed25519_ss58_is_correct() {
         let signer = CryptographicIdentity::try_from_private_str(ALICE_MINISECRET_HEX).unwrap();
         let ed25519_pubkey = signer.try_get_public_ed25519().unwrap();
-        let ed25519_ss58 = format!("{}", ed25519_pubkey.get_goro_address());
+        let ed25519_ss58 = format!("{}", ed25519_pubkey.get_main_address());
 
         assert_eq!(ed25519_ss58, ALICE_SS58_ED25519);
     }
@@ -394,9 +390,9 @@ mod tests {
         let (substrate_identity, _) = Sr25519KeyPair::from_phrase(TEST_MNEMONIC, None).unwrap();
         let substrate_identity = substrate_identity.public();
         let substrate_identity =
-            substrate_identity.to_ss58check_with_version(Ss58AddressFormatRegistry::GoroAccount.into());
+            substrate_identity.to_ss58check_with_version(Ss58AddressFormatRegistry::NagaraAccount.into());
         let identity = CryptographicIdentity::try_from_private_str(TEST_MNEMONIC).unwrap();
-        let sr25519_address = identity.try_get_public_sr25519().unwrap().get_goro_address();
+        let sr25519_address = identity.try_get_public_sr25519().unwrap().get_main_address();
 
         assert_eq!(sr25519_address.as_str(), TEST_MNEMONIC_SS58_SR25519);
         assert_eq!(sr25519_address.as_str(), substrate_identity);
@@ -407,9 +403,9 @@ mod tests {
         let (substrate_identity, _) = Ed25519KeyPair::from_phrase(TEST_MNEMONIC, None).unwrap();
         let substrate_identity = substrate_identity.public();
         let substrate_identity =
-            substrate_identity.to_ss58check_with_version(Ss58AddressFormatRegistry::GoroAccount.into());
+            substrate_identity.to_ss58check_with_version(Ss58AddressFormatRegistry::NagaraAccount.into());
         let identity = CryptographicIdentity::try_from_private_str(TEST_MNEMONIC).unwrap();
-        let ed25519_address = identity.try_get_public_ed25519().unwrap().get_goro_address();
+        let ed25519_address = identity.try_get_public_ed25519().unwrap().get_main_address();
 
         assert_eq!(ed25519_address.as_str(), TEST_MNEMONIC_SS58_ED25519);
         assert_eq!(ed25519_address.as_str(), substrate_identity);
@@ -422,20 +418,19 @@ mod tests {
             let error_message = format!("Error on mnemonic: \"{}\"", random_mnemonic.deref());
             let (substrate_sr25519_keypair, substrate_secret_seed_bytes) =
                 Sr25519KeyPair::from_phrase(&random_mnemonic, None).expect(&error_message);
-            let substrate_goro_ss58 = substrate_sr25519_keypair
+            let substrate_nagara_ss58 = substrate_sr25519_keypair
                 .public()
-                .to_ss58check_with_version(Ss58AddressFormatRegistry::GoroAccount.into());
+                .to_ss58check_with_version(Ss58AddressFormatRegistry::NagaraAccount.into());
             let substrate_sr25519_public_bytes = substrate_sr25519_keypair.public().0;
-            let goro_keypair =
-                CryptographicIdentity::try_from_private_str(&random_mnemonic).expect(&error_message);
-            let goro_private_key_bytes = PrivateKeyBytes::from(goro_keypair.try_get_private_key().unwrap());
-            let goro_sr25519_public_key = goro_keypair.try_get_public_sr25519().unwrap();
-            let goro_ss58 = goro_sr25519_public_key.get_goro_address();
-            let goro_sr25519_public_bytes = goro_sr25519_public_key.to_bytes();
+            let nagara_keypair = CryptographicIdentity::try_from_private_str(&random_mnemonic).expect(&error_message);
+            let nagara_private_key_bytes = PrivateKeyBytes::from(nagara_keypair.try_get_private_key().unwrap());
+            let nagara_sr25519_public_key = nagara_keypair.try_get_public_sr25519().unwrap();
+            let nagara_ss58 = nagara_sr25519_public_key.get_main_address();
+            let nagara_sr25519_public_bytes = nagara_sr25519_public_key.to_bytes();
 
-            assert_eq!(goro_private_key_bytes, substrate_secret_seed_bytes);
-            assert_eq!(goro_sr25519_public_bytes, substrate_sr25519_public_bytes);
-            assert_eq!(goro_ss58.to_string(), substrate_goro_ss58);
+            assert_eq!(nagara_private_key_bytes, substrate_secret_seed_bytes);
+            assert_eq!(nagara_sr25519_public_bytes, substrate_sr25519_public_bytes);
+            assert_eq!(nagara_ss58.to_string(), substrate_nagara_ss58);
         }
     }
 
@@ -446,20 +441,19 @@ mod tests {
             let error_message = format!("Error on mnemonic: \"{}\"", random_mnemonic.deref());
             let (substrate_ed25519_keypair, substrate_secret_seed_bytes) =
                 Ed25519KeyPair::from_phrase(&random_mnemonic, None).expect(&error_message);
-            let substrate_goro_ss58 = substrate_ed25519_keypair
+            let substrate_nagara_ss58 = substrate_ed25519_keypair
                 .public()
-                .to_ss58check_with_version(Ss58AddressFormatRegistry::GoroAccount.into());
+                .to_ss58check_with_version(Ss58AddressFormatRegistry::NagaraAccount.into());
             let substrate_ed25519_public_bytes = substrate_ed25519_keypair.public().0;
-            let goro_keypair =
-                CryptographicIdentity::try_from_private_str(&random_mnemonic).expect(&error_message);
-            let goro_private_key_bytes = PrivateKeyBytes::from(goro_keypair.try_get_private_key().unwrap());
-            let goro_ed25519_public_key = goro_keypair.try_get_public_ed25519().unwrap();
-            let goro_ss58 = goro_ed25519_public_key.get_goro_address();
-            let goro_ed25519_public_bytes = goro_keypair.try_get_public_ed25519().unwrap().to_bytes();
+            let nagara_keypair = CryptographicIdentity::try_from_private_str(&random_mnemonic).expect(&error_message);
+            let nagara_private_key_bytes = PrivateKeyBytes::from(nagara_keypair.try_get_private_key().unwrap());
+            let nagara_ed25519_public_key = nagara_keypair.try_get_public_ed25519().unwrap();
+            let nagara_ss58 = nagara_ed25519_public_key.get_main_address();
+            let nagara_ed25519_public_bytes = nagara_keypair.try_get_public_ed25519().unwrap().to_bytes();
 
-            assert_eq!(goro_private_key_bytes, substrate_secret_seed_bytes);
-            assert_eq!(goro_ed25519_public_bytes, substrate_ed25519_public_bytes);
-            assert_eq!(goro_ss58.to_string(), substrate_goro_ss58);
+            assert_eq!(nagara_private_key_bytes, substrate_secret_seed_bytes);
+            assert_eq!(nagara_ed25519_public_bytes, substrate_ed25519_public_bytes);
+            assert_eq!(nagara_ss58.to_string(), substrate_nagara_ss58);
         }
     }
 }

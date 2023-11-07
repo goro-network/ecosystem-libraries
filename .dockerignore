@@ -2,7 +2,7 @@
 target/
 temp/
 
-**/*.gorofile
+**/*.ngr-file
 **/*.identity.json
 **/*.key
 **/*Dockerfile

@@ -28,10 +28,7 @@ pub fn seed_from_entropy(entropy: &[u8], password: &str) -> crate::Result<super:
     Ok(seed)
 }
 
-pub fn sr25519_mini_secret_from_entropy(
-    entropy: &[u8],
-    password: &str,
-) -> crate::Result<schnorrkel::MiniSecretKey> {
+pub fn sr25519_mini_secret_from_entropy(entropy: &[u8], password: &str) -> crate::Result<schnorrkel::MiniSecretKey> {
     let seed = seed_from_entropy(entropy, password)?;
 
     Ok(

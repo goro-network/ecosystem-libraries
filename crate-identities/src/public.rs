@@ -156,16 +156,15 @@ impl core::convert::TryFrom<&str> for PublicKey {
 
 impl PublicKey {
     pub const LEN_PUBLIC_KEY: usize = 32;
-    pub const PREFIX_DEFAULT: u16 = Self::PREFIX_GORO;
-    pub const PREFIX_GORO: u16 = ss58_registry::Ss58AddressFormatRegistry::GoroAccount as u16;
-    pub const PREFIX_KRIGAN: u16 = ss58_registry::Ss58AddressFormatRegistry::KriganAccount as u16;
-    pub const PREFIX_SS58: &[u8; 7] = b"SS58PRE";
+    pub const PREFIX_BUFFER_SS58: &[u8; 7] = b"SS58PRE";
+    pub const PREFIX_DEFAULT: u16 = Self::PREFIX_MAIN_NETWORK;
+    pub const PREFIX_MAIN_NETWORK: u16 = ss58_registry::Ss58AddressFormatRegistry::NagaraAccount as u16;
+    pub const PREFIX_STORAGE_NETWORK: u16 = ss58_registry::Ss58AddressFormatRegistry::NagaraStorageAccount as u16;
     pub const SS58_BYTES_LENGTH: usize = Self::LEN_PUBLIC_KEY + Self::SS58_BYTES_SUFFIX_PREFIX_LENGTH;
     pub const SS58_BYTES_PREFIX_LENGTH: usize = 2;
     pub const SS58_BYTES_SUFFIX_INDEX: usize = Self::SS58_BYTES_LENGTH - Self::SS58_BYTES_SUFFIX_LENGTH;
     pub const SS58_BYTES_SUFFIX_LENGTH: usize = 2;
-    pub const SS58_BYTES_SUFFIX_PREFIX_LENGTH: usize =
-        Self::SS58_BYTES_PREFIX_LENGTH + Self::SS58_BYTES_SUFFIX_LENGTH;
+    pub const SS58_BYTES_SUFFIX_PREFIX_LENGTH: usize = Self::SS58_BYTES_PREFIX_LENGTH + Self::SS58_BYTES_SUFFIX_LENGTH;
     pub const SS58_STRING_LENGTH_RANGE: core::ops::RangeInclusive<usize> =
         Self::SS58_STRING_MIN_LENGTH..=Self::SS58_STRING_MAX_LENGTH;
     pub const SS58_STRING_MAX_LENGTH: usize = 50;
@@ -173,7 +172,7 @@ impl PublicKey {
 
     pub fn get_ss58_string(&self, prefix: u16) -> Ss58String {
         let mut hasher = blake2::Blake2b512::new();
-        hasher.update(Self::PREFIX_SS58);
+        hasher.update(Self::PREFIX_BUFFER_SS58);
         let mut hash_buffer = [0u8; 64]; // 512-bit
         let mut string_buffer = [0u8; { Self::SS58_BYTES_LENGTH * 2 }];
         let mut version_buffer = [0u8; Self::SS58_BYTES_LENGTH];
@@ -199,9 +198,7 @@ impl PublicKey {
             hasher.update(&version_buffer[..34]);
             hasher.finalize_into((&mut hash_buffer).into());
             version_buffer[34..36].copy_from_slice(&hash_buffer[..2]);
-            string_length = bs58::encode(&version_buffer[..])
-                .onto(string_buffer.as_mut())
-                .unwrap();
+            string_length = bs58::encode(&version_buffer[..]).onto(string_buffer.as_mut()).unwrap();
         }
 
         let utf8_str = core::str::from_utf8(&string_buffer[..string_length]).expect("Should be infallible!");
@@ -209,12 +206,12 @@ impl PublicKey {
         Ss58String::from_str(utf8_str).expect("Should be infallible!")
     }
 
-    pub fn get_goro_address(&self) -> Ss58String {
-        self.get_ss58_string(Self::PREFIX_GORO)
+    pub fn get_main_address(&self) -> Ss58String {
+        self.get_ss58_string(Self::PREFIX_MAIN_NETWORK)
     }
 
-    pub fn get_krigan_address(&self) -> Ss58String {
-        self.get_ss58_string(Self::PREFIX_KRIGAN)
+    pub fn get_storage_address(&self) -> Ss58String {
+        self.get_ss58_string(Self::PREFIX_STORAGE_NETWORK)
     }
 
     pub fn try_from_hex_bytes(hex_bytes: &str) -> crate::Result<Self> {
@@ -236,7 +233,7 @@ impl PublicKey {
         }
 
         let mut hasher = blake2::Blake2b512::new();
-        hasher.update(Self::PREFIX_SS58);
+        hasher.update(Self::PREFIX_BUFFER_SS58);
         let mut hash_buffer = [0u8; 64]; // 512-bit
         let mut decoded_buffer = [0u8; Self::SS58_BYTES_LENGTH];
         let decode_length = bs58::decode(ss58_string)
@@ -335,21 +332,13 @@ impl PublicKey {
         }
     }
 
-    pub fn verify_with_string_identity(
-        string_identity: &str,
-        signature: &[u8],
-        message: &[u8],
-    ) -> crate::Result<bool> {
+    pub fn verify_with_string_identity(string_identity: &str, signature: &[u8], message: &[u8]) -> crate::Result<bool> {
         let instance = Self::try_from(string_identity)?;
 
         instance.verify(signature, message)
     }
 
-    pub fn verify_with_bytes_identity(
-        bytes_account: &[u8],
-        signature: &[u8],
-        message: &[u8],
-    ) -> crate::Result<bool> {
+    pub fn verify_with_bytes_identity(bytes_account: &[u8], signature: &[u8], message: &[u8]) -> crate::Result<bool> {
         let instance = Self::try_from(bytes_account)?;
 
         instance.verify(signature, message)
@@ -367,97 +356,87 @@ mod tests {
     use sp_core::sr25519::Pair as Sr25519KeyPair;
     use sp_core::Pair;
 
-    const ALICE_MINISECRET_HEX: &str = "0xe5be9a5092b81bca64be81d212e7f2f9eba183bb7a90954f7b76361f6edb5c0a";
-    const ALICE_SR25519_HEX: &str = "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d";
-    const ALICE_SR25519_GORO: &str = "gr5wupneKLGRBrA3hkcrXgbwXp1F26SV7L4LymGxCKs9QMXn1";
-    const ALICE_SR25519_KRIGAN: &str = "kRvkvFKT8tJDBBRizPdK1Efug3j7XRC5JFJJUJ1aMnzj6aXuB";
-    const ALICE_ED25519_HEX: &str = "0x34602b88f60513f1c805d87ef52896934baf6a662bc37414dbdbf69356b1a691";
-    const ALICE_ED25519_GORO: &str = "gr2LLpGt2rLUixu5YzrWNvbX9qJeavgZLh95UpwBpvZSq6xpA";
-    const ALICE_ED25519_KRIGAN: &str = "kRs9MEogrQNGiJAkqdrxrUfVJ52X6FS9XcP2yMfozPh2XKjFN";
     const ALICE_MESSAGE: &[u8] = b"Hello, this is Alice!";
+    const ALICE_MINISECRET_HEX: &str = "0xe5be9a5092b81bca64be81d212e7f2f9eba183bb7a90954f7b76361f6edb5c0a";
+    const ALICE_ED25519_HEX: &str = "0x34602b88f60513f1c805d87ef52896934baf6a662bc37414dbdbf69356b1a691";
+    const ALICE_ED25519_MAIN: &str = "gr2LLpGt2rLUixu5YzrWNvbX9qJeavgZLh95UpwBpvZSq6xpA";
+    const ALICE_ED25519_STORAGE: &str = "gbrYg7PznH2HWnZdgPFb1Jdkp4QLq8f9RuaQqTss5B91b8pas";
+    const ALICE_SR25519_HEX: &str = "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d";
+    const ALICE_SR25519_MAIN: &str = "gr5wupneKLGRBrA3hkcrXgbwXp1F26SV7L4LymGxCKs9QMXn1";
+    const ALICE_SR25519_STORAGE: &str = "gbvAF7um4kxDyfpbq91wA4eBC36wGJR5CYVgLQDdSaSiAProg";
 
     #[test]
-    fn encode_alice_goro_is_correct() {
+    fn encode_alice_main_is_correct() {
         let sr25519_pubkey = PublicKey::try_from(ALICE_SR25519_HEX).unwrap();
         let ed25519_pubkey = PublicKey::try_from(ALICE_ED25519_HEX).unwrap();
-        let sr25519_goro = sr25519_pubkey.get_goro_address();
-        let ed25519_goro = ed25519_pubkey.get_goro_address();
-        let sr25519_substrate_account = AccountId32::from_ss58check(&sr25519_goro).unwrap();
-        let ed25519_substrate_account = AccountId32::from_ss58check(&ed25519_goro).unwrap();
+        let sr25519_main = sr25519_pubkey.get_main_address();
+        let ed25519_main = ed25519_pubkey.get_main_address();
+        let sr25519_substrate_account = AccountId32::from_ss58check(&sr25519_main).unwrap();
+        let ed25519_substrate_account = AccountId32::from_ss58check(&ed25519_main).unwrap();
         let sr25519_substrate_hex = format!("0x{}", hex::encode(sr25519_substrate_account));
         let ed25519_substrate_hex = format!("0x{}", hex::encode(ed25519_substrate_account));
 
-        assert_eq!(sr25519_goro.as_str(), ALICE_SR25519_GORO);
-        assert_eq!(ed25519_goro.as_str(), ALICE_ED25519_GORO);
+        assert_eq!(sr25519_main.as_str(), ALICE_SR25519_MAIN);
+        assert_eq!(ed25519_main.as_str(), ALICE_ED25519_MAIN);
         assert_eq!(sr25519_substrate_hex, ALICE_SR25519_HEX);
         assert_eq!(ed25519_substrate_hex, ALICE_ED25519_HEX);
     }
 
     #[test]
-    fn encode_alice_krigan_is_correct() {
+    fn encode_alice_storage_is_correct() {
         let sr25519_pubkey = PublicKey::try_from(ALICE_SR25519_HEX).unwrap();
         let ed25519_pubkey = PublicKey::try_from(ALICE_ED25519_HEX).unwrap();
-        let sr25519_krigan = sr25519_pubkey.get_krigan_address();
-        let ed25519_krigan = ed25519_pubkey.get_krigan_address();
-        let sr25519_substrate_account = AccountId32::from_ss58check(&sr25519_krigan).unwrap();
-        let ed25519_substrate_account = AccountId32::from_ss58check(&ed25519_krigan).unwrap();
+        let sr25519_storage = sr25519_pubkey.get_storage_address();
+        let ed25519_storage = ed25519_pubkey.get_storage_address();
+        let sr25519_substrate_account = AccountId32::from_ss58check(&sr25519_storage).unwrap();
+        let ed25519_substrate_account = AccountId32::from_ss58check(&ed25519_storage).unwrap();
         let sr25519_substrate_hex = format!("0x{}", hex::encode(sr25519_substrate_account));
         let ed25519_substrate_hex = format!("0x{}", hex::encode(ed25519_substrate_account));
 
-        assert_eq!(sr25519_krigan.as_str(), ALICE_SR25519_KRIGAN);
-        assert_eq!(ed25519_krigan.as_str(), ALICE_ED25519_KRIGAN);
+        assert_eq!(sr25519_storage.as_str(), ALICE_SR25519_STORAGE);
+        assert_eq!(ed25519_storage.as_str(), ALICE_ED25519_STORAGE);
         assert_eq!(sr25519_substrate_hex, ALICE_SR25519_HEX);
         assert_eq!(ed25519_substrate_hex, ALICE_ED25519_HEX);
     }
 
     #[test]
-    fn decode_alice_goro_is_correct() {
-        let sr25519_pubkey = PublicKey::try_from(ALICE_SR25519_GORO).unwrap();
-        let ed25519_pubkey = PublicKey::try_from(ALICE_ED25519_GORO).unwrap();
+    fn decode_alice_main_is_correct() {
+        let sr25519_pubkey = PublicKey::try_from(ALICE_SR25519_MAIN).unwrap();
+        let ed25519_pubkey = PublicKey::try_from(ALICE_ED25519_MAIN).unwrap();
 
-        assert_eq!(sr25519_pubkey.get_goro_address().as_str(), ALICE_SR25519_GORO);
-        assert_eq!(ed25519_pubkey.get_goro_address().as_str(), ALICE_ED25519_GORO);
-        assert!(AccountId32::from_ss58check(ALICE_SR25519_GORO).is_ok());
-        assert!(AccountId32::from_ss58check(ALICE_ED25519_GORO).is_ok());
+        assert_eq!(sr25519_pubkey.get_main_address().as_str(), ALICE_SR25519_MAIN);
+        assert_eq!(ed25519_pubkey.get_main_address().as_str(), ALICE_ED25519_MAIN);
+        assert!(AccountId32::from_ss58check(ALICE_SR25519_MAIN).is_ok());
+        assert!(AccountId32::from_ss58check(ALICE_ED25519_MAIN).is_ok());
     }
 
     #[test]
-    fn decode_alice_krigan_is_correct() {
-        let sr25519_pubkey = PublicKey::try_from(ALICE_SR25519_KRIGAN).unwrap();
-        let ed25519_pubkey = PublicKey::try_from(ALICE_ED25519_KRIGAN).unwrap();
+    fn decode_alice_storage_is_correct() {
+        let sr25519_pubkey = PublicKey::try_from(ALICE_SR25519_STORAGE).unwrap();
+        let ed25519_pubkey = PublicKey::try_from(ALICE_ED25519_STORAGE).unwrap();
 
-        assert_eq!(sr25519_pubkey.get_krigan_address().as_str(), ALICE_SR25519_KRIGAN);
-        assert_eq!(ed25519_pubkey.get_krigan_address().as_str(), ALICE_ED25519_KRIGAN);
-        assert!(AccountId32::from_ss58check(ALICE_SR25519_KRIGAN).is_ok());
-        assert!(AccountId32::from_ss58check(ALICE_ED25519_KRIGAN).is_ok());
+        assert_eq!(sr25519_pubkey.get_storage_address().as_str(), ALICE_SR25519_STORAGE);
+        assert_eq!(ed25519_pubkey.get_storage_address().as_str(), ALICE_ED25519_STORAGE);
+        assert!(AccountId32::from_ss58check(ALICE_SR25519_STORAGE).is_ok());
+        assert!(AccountId32::from_ss58check(ALICE_ED25519_STORAGE).is_ok());
     }
 
     #[test]
-    fn verify_alice_goro_verification_is_correct() {
-        let sr25519_pubkey = PublicKey::try_from(ALICE_SR25519_GORO).unwrap();
-        let ed25519_pubkey = PublicKey::try_from(ALICE_ED25519_GORO).unwrap();
+    fn verify_alice_main_verification_is_correct() {
+        let sr25519_pubkey = PublicKey::try_from(ALICE_SR25519_MAIN).unwrap();
+        let ed25519_pubkey = PublicKey::try_from(ALICE_ED25519_MAIN).unwrap();
         let substrate_sr25519_keypair = Sr25519KeyPair::from_string(ALICE_MINISECRET_HEX, None).unwrap();
         let substrate_ed25519_keypair = Ed25519KeyPair::from_string(ALICE_MINISECRET_HEX, None).unwrap();
         let signature_sr25519 = substrate_sr25519_keypair.sign(ALICE_MESSAGE);
         let signature_ed25519 = substrate_ed25519_keypair.sign(ALICE_MESSAGE);
-        let signature_verification_sr25519 = sr25519_pubkey
-            .verify(&signature_sr25519.0[..], ALICE_MESSAGE)
-            .unwrap();
-        let signature_verification_ed25519 = ed25519_pubkey
-            .verify(&signature_ed25519.0[..], ALICE_MESSAGE)
-            .unwrap();
-        let signature_verification_anyhow_with_sr25519 = PublicKey::verify_with_string_identity(
-            ALICE_SR25519_GORO,
-            &signature_sr25519.0[..],
-            ALICE_MESSAGE,
-        )
-        .unwrap();
-        let signature_verification_anyhow_with_ed25519 = PublicKey::verify_with_string_identity(
-            ALICE_ED25519_GORO,
-            &signature_ed25519.0[..],
-            ALICE_MESSAGE,
-        )
-        .unwrap();
+        let signature_verification_sr25519 = sr25519_pubkey.verify(&signature_sr25519.0[..], ALICE_MESSAGE).unwrap();
+        let signature_verification_ed25519 = ed25519_pubkey.verify(&signature_ed25519.0[..], ALICE_MESSAGE).unwrap();
+        let signature_verification_anyhow_with_sr25519 =
+            PublicKey::verify_with_string_identity(ALICE_SR25519_MAIN, &signature_sr25519.0[..], ALICE_MESSAGE)
+                .unwrap();
+        let signature_verification_anyhow_with_ed25519 =
+            PublicKey::verify_with_string_identity(ALICE_ED25519_MAIN, &signature_ed25519.0[..], ALICE_MESSAGE)
+                .unwrap();
 
         assert!(signature_verification_sr25519);
         assert!(signature_verification_ed25519);
@@ -466,31 +445,21 @@ mod tests {
     }
 
     #[test]
-    fn verify_alice_krigan_verification_is_correct() {
-        let sr25519_pubkey = PublicKey::try_from(ALICE_SR25519_KRIGAN).unwrap();
-        let ed25519_pubkey = PublicKey::try_from(ALICE_ED25519_KRIGAN).unwrap();
+    fn verify_alice_storage_verification_is_correct() {
+        let sr25519_pubkey = PublicKey::try_from(ALICE_SR25519_STORAGE).unwrap();
+        let ed25519_pubkey = PublicKey::try_from(ALICE_ED25519_STORAGE).unwrap();
         let substrate_sr25519_keypair = Sr25519KeyPair::from_string(ALICE_MINISECRET_HEX, None).unwrap();
         let substrate_ed25519_keypair = Ed25519KeyPair::from_string(ALICE_MINISECRET_HEX, None).unwrap();
         let signature_sr25519 = substrate_sr25519_keypair.sign(ALICE_MESSAGE);
         let signature_ed25519 = substrate_ed25519_keypair.sign(ALICE_MESSAGE);
-        let signature_verification_sr25519 = sr25519_pubkey
-            .verify(&signature_sr25519.0[..], ALICE_MESSAGE)
-            .unwrap();
-        let signature_verification_ed25519 = ed25519_pubkey
-            .verify(&signature_ed25519.0[..], ALICE_MESSAGE)
-            .unwrap();
-        let signature_verification_anyhow_with_sr25519 = PublicKey::verify_with_string_identity(
-            ALICE_SR25519_KRIGAN,
-            &signature_sr25519.0[..],
-            ALICE_MESSAGE,
-        )
-        .unwrap();
-        let signature_verification_anyhow_with_ed25519 = PublicKey::verify_with_string_identity(
-            ALICE_ED25519_KRIGAN,
-            &signature_ed25519.0[..],
-            ALICE_MESSAGE,
-        )
-        .unwrap();
+        let signature_verification_sr25519 = sr25519_pubkey.verify(&signature_sr25519.0[..], ALICE_MESSAGE).unwrap();
+        let signature_verification_ed25519 = ed25519_pubkey.verify(&signature_ed25519.0[..], ALICE_MESSAGE).unwrap();
+        let signature_verification_anyhow_with_sr25519 =
+            PublicKey::verify_with_string_identity(ALICE_SR25519_STORAGE, &signature_sr25519.0[..], ALICE_MESSAGE)
+                .unwrap();
+        let signature_verification_anyhow_with_ed25519 =
+            PublicKey::verify_with_string_identity(ALICE_ED25519_STORAGE, &signature_ed25519.0[..], ALICE_MESSAGE)
+                .unwrap();
 
         assert!(signature_verification_sr25519);
         assert!(signature_verification_ed25519);

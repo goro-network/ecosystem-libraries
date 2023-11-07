@@ -89,8 +89,7 @@ impl PrivateKey {
         }
 
         let mut inner = PrivateKeyBytes::default();
-        hex::decode_to_slice(sanitized_maybe_hex, &mut inner)
-            .map_err(|_| crate::errors::Error::InvalidHexCharacter)?;
+        hex::decode_to_slice(sanitized_maybe_hex, &mut inner).map_err(|_| crate::errors::Error::InvalidHexCharacter)?;
 
         Ok(Self {
             inner,
@@ -100,8 +99,7 @@ impl PrivateKey {
     pub fn try_from_phrase(source: &str, password: &str) -> crate::Result<Self> {
         let mnemonic_phrase = crate::mnemonic::MnemonicPhrase::try_from(source)?;
         let entropy = mnemonic_phrase.try_get_entropy()?;
-        let mini_secret =
-            crate::mnemonic::mini_secret::sr25519_mini_secret_from_entropy(entropy.as_ref(), password)?;
+        let mini_secret = crate::mnemonic::mini_secret::sr25519_mini_secret_from_entropy(entropy.as_ref(), password)?;
         let inner = mini_secret.to_bytes();
 
         Ok(Self {
@@ -129,13 +127,10 @@ impl PrivateKey {
 
     pub fn sign(&self, with_schnorrkel: bool, message: &[u8]) -> crate::SignatureBytes {
         if with_schnorrkel {
-            let mini_secret =
-                schnorrkel::MiniSecretKey::from_bytes(&self.inner).expect("Should be infallible");
+            let mini_secret = schnorrkel::MiniSecretKey::from_bytes(&self.inner).expect("Should be infallible");
             let keypair = mini_secret.expand_to_keypair(Self::EXPANSION_MODE_SR25519);
 
-            keypair
-                .sign_simple(crate::SIGNING_CONTEXT_SR25519, message)
-                .to_bytes()
+            keypair.sign_simple(crate::SIGNING_CONTEXT_SR25519, message).to_bytes()
         } else {
             let keypair = ed25519_dalek::SigningKey::from_bytes(&self.inner);
 

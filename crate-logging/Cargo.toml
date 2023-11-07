@@ -1,6 +1,6 @@
 [package]
-name = "goro-logging"
-description = "GORO Network - Logging"
+name = "nagara-logging"
+description = "nagara Network - Logging"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true

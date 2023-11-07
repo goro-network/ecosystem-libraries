@@ -1,4 +1,4 @@
-# GORO Network's Logging Library
+# nagara Network's Logging Library
 
 Convenience library for logging
 

@@ -1,4 +1,4 @@
-# GORO Network's Identities Library
+# nagara Network's Identities Library
 
 A Core `#![no_std]` library for the entire ecosystem
 

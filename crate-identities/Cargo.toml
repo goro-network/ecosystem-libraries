@@ -1,6 +1,6 @@
 [package]
-name = "goro-identities"
-description = "GORO Network - Identity Library"
+name = "nagara-identities"
+description = "nagara Network - Identity Library"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true

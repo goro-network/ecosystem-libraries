@@ -7,8 +7,8 @@ pub struct Cv25519Authenticator;
 
 impl Cv25519Authenticator {
     pub const EMPTY_PAYLOAD: [u8; 4] = 0x600dd33d_u32.to_be_bytes();
-    pub const HEADER_IDENTITY: &str = "goro-id";
-    pub const HEADER_SIGNATURE: &str = "goro-signature";
+    pub const HEADER_IDENTITY: &str = "nagara-id";
+    pub const HEADER_SIGNATURE: &str = "nagara-signature";
 }
 
 impl<S, Req> actix_web::dev::Transform<S, actix_web::dev::ServiceRequest> for Cv25519Authenticator
@@ -28,7 +28,7 @@ where
     type Transform = Cv25519AuthenticatorService<S>;
 
     fn new_transform(&self, service: S) -> Self::Future {
-        goro_logging::debug!("Creating new transform");
+        nagara_logging::debug!("Creating new transform");
 
         core::future::ready(Ok(Cv25519AuthenticatorService {
             wrapped_service: alloc::rc::Rc::new(core::cell::RefCell::new(service)),
@@ -59,16 +59,13 @@ impl<S> Cv25519AuthenticatorService<S> {
     fn try_get_verified_identity_from_headers(
         headers: actix_http::header::HeaderMap,
         payload_bytes: &[u8],
-    ) -> core::result::Result<goro_identities::CryptographicIdentity, actix_web::Error> {
-        let maybe_valid_crypto_id =
-            Self::try_get_header_value(&headers, Cv25519Authenticator::HEADER_IDENTITY)?;
-        let maybe_valid_signature =
-            Self::try_get_header_value(&headers, Cv25519Authenticator::HEADER_SIGNATURE)?;
+    ) -> core::result::Result<nagara_identities::CryptographicIdentity, actix_web::Error> {
+        let maybe_valid_crypto_id = Self::try_get_header_value(&headers, Cv25519Authenticator::HEADER_IDENTITY)?;
+        let maybe_valid_signature = Self::try_get_header_value(&headers, Cv25519Authenticator::HEADER_SIGNATURE)?;
         let maybe_valid_signature = hex::decode(maybe_valid_signature)
             .map_err(|inner_err| actix_web::error::ErrorUnauthorized(inner_err.to_string()))?;
-        let valid_identity =
-            goro_identities::CryptographicIdentity::try_from_public_str(maybe_valid_crypto_id)
-                .map_err(|inner_err| actix_web::error::ErrorUnauthorized(inner_err.to_string()))?;
+        let valid_identity = nagara_identities::CryptographicIdentity::try_from_public_str(maybe_valid_crypto_id)
+            .map_err(|inner_err| actix_web::error::ErrorUnauthorized(inner_err.to_string()))?;
         let verified_signature = valid_identity
             .verify(&maybe_valid_signature, payload_bytes)
             .map_err(|inner_err| actix_web::error::ErrorUnauthorized(inner_err.to_string()))?;
@@ -96,9 +93,7 @@ impl<S> Cv25519AuthenticatorService<S> {
         service_request.set_payload(actix_web::dev::Payload::from(original_payload));
 
         if request_body.is_empty() {
-            Ok(actix_web::web::Bytes::from_static(
-                &Cv25519Authenticator::EMPTY_PAYLOAD,
-            ))
+            Ok(actix_web::web::Bytes::from_static(&Cv25519Authenticator::EMPTY_PAYLOAD))
         } else {
             Ok(request_body.into())
         }
@@ -148,7 +143,7 @@ mod tests {
     use actix_web::test::{init_service, try_call_service, TestRequest};
     use actix_web::web::ReqData;
     use actix_web::{get, App, Responder};
-    use goro_identities::CryptographicIdentity;
+    use nagara_identities::CryptographicIdentity;
     use sp_core::ed25519::Pair as Ed25519KeyPair;
     use sp_core::sr25519::Pair as Sr25519KeyPair;
     use sp_core::Pair;
@@ -174,8 +169,7 @@ mod tests {
 
     #[actix_rt::test]
     async fn missing_header_id_yield_unauthorized() {
-        let test_service =
-            init_service(App::new().wrap(Cv25519Authenticator).service(mock_get_docroot)).await;
+        let test_service = init_service(App::new().wrap(Cv25519Authenticator).service(mock_get_docroot)).await;
         let mut test_request = TestRequest::with_uri("/").to_request();
         test_request.headers_mut().insert(
             HeaderName::from_static(Cv25519Authenticator::HEADER_SIGNATURE),
@@ -192,8 +186,7 @@ mod tests {
 
     #[actix_rt::test]
     async fn missing_header_signature_yield_unauthorized() {
-        let test_service =
-            init_service(App::new().wrap(Cv25519Authenticator).service(mock_get_docroot)).await;
+        let test_service = init_service(App::new().wrap(Cv25519Authenticator).service(mock_get_docroot)).await;
         let mut test_request = TestRequest::with_uri("/").to_request();
         test_request.headers_mut().insert(
             HeaderName::from_static(Cv25519Authenticator::HEADER_IDENTITY),
@@ -213,8 +206,7 @@ mod tests {
         let alice_keypair = Sr25519KeyPair::from_string(ALICE_SECRET_SEED, None).unwrap();
         let alice_signature = alice_keypair.sign(&Cv25519Authenticator::EMPTY_PAYLOAD).0;
         let alice_signature = hex::encode(alice_signature);
-        let test_service =
-            init_service(App::new().wrap(Cv25519Authenticator).service(mock_get_docroot)).await;
+        let test_service = init_service(App::new().wrap(Cv25519Authenticator).service(mock_get_docroot)).await;
         let mut test_request = TestRequest::with_uri("/").to_request();
         test_request.headers_mut().insert(
             HeaderName::from_static(Cv25519Authenticator::HEADER_IDENTITY),
@@ -240,8 +232,7 @@ mod tests {
         let alice_keypair = Ed25519KeyPair::from_string(ALICE_SECRET_SEED, None).unwrap();
         let alice_signature = alice_keypair.sign(&Cv25519Authenticator::EMPTY_PAYLOAD).0;
         let alice_signature = hex::encode(alice_signature);
-        let test_service =
-            init_service(App::new().wrap(Cv25519Authenticator).service(mock_get_docroot)).await;
+        let test_service = init_service(App::new().wrap(Cv25519Authenticator).service(mock_get_docroot)).await;
         let mut test_request = TestRequest::with_uri("/").to_request();
         test_request.headers_mut().insert(
             HeaderName::from_static(Cv25519Authenticator::HEADER_IDENTITY),
