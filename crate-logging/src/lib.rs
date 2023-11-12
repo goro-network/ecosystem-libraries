@@ -2,18 +2,18 @@
 #![forbid(unsafe_code)]
 #![deny(warnings)]
 
-#[cfg(all(feature = "main", feature = "wasm32"))]
-compile_error!("Feature \"main\" can't be combined with \"wasm32\".");
+#[cfg(all(feature = "app", feature = "wasm32"))]
+compile_error!("Feature \"app\" can't be combined with \"wasm32\".");
 
 #[cfg(feature = "wasm32")]
 pub use gloo_console::{debug, error, info, warn};
 #[cfg(not(feature = "wasm32"))]
 pub use log::{debug, error, info, warn};
 
-#[cfg(feature = "main")]
+#[cfg(feature = "app")]
 const ENVKEY_RUST_LOG: &str = "RUST_LOG";
 
-#[cfg(feature = "main")]
+#[cfg(feature = "app")]
 pub fn init() {
     if std::env::var(ENVKEY_RUST_LOG).is_err() {
         #[cfg(debug_assertions)]
