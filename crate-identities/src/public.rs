@@ -1,9 +1,6 @@
-use blake2::Digest;
-use core::str::FromStr;
-use ed25519_dalek::Verifier;
-
 pub type PublicKeyBytes = [u8; PublicKey::LEN_PUBLIC_KEY];
 pub type Ss58String = arrayvec::ArrayString<{ PublicKey::SS58_STRING_MAX_LENGTH }>;
+pub type HexString = arrayvec::ArrayString<{ PublicKey::LEN_PUBLIC_KEY * 2 }>;
 
 type Ed25519PublicKey = ed25519_dalek::VerifyingKey;
 type Ed25519Signature = ed25519_dalek::Signature;
@@ -171,8 +168,8 @@ impl PublicKey {
     pub const SS58_STRING_MIN_LENGTH: usize = Self::SS58_BYTES_SUFFIX_PREFIX_LENGTH;
 
     pub fn get_ss58_string(&self, prefix: u16) -> Ss58String {
-        let mut hasher = blake2::Blake2b512::new();
-        hasher.update(Self::PREFIX_BUFFER_SS58);
+        let mut hasher = <blake2::Blake2b512 as blake2::Digest>::new();
+        blake2::Digest::update(&mut hasher, Self::PREFIX_BUFFER_SS58);
         let mut hash_buffer = [0u8; 64]; // 512-bit
         let mut string_buffer = [0u8; { Self::SS58_BYTES_LENGTH * 2 }];
         let mut version_buffer = [0u8; Self::SS58_BYTES_LENGTH];
@@ -183,8 +180,8 @@ impl PublicKey {
         if sort_ident {
             version_buffer[0] = ident as u8;
             version_buffer[1..33].copy_from_slice(self.as_ref());
-            hasher.update(&version_buffer[..33]);
-            hasher.finalize_into((&mut hash_buffer).into());
+            blake2::Digest::update(&mut hasher, &version_buffer[..33]);
+            blake2::Digest::finalize_into(hasher, (&mut hash_buffer).into());
             version_buffer[33..35].copy_from_slice(&hash_buffer[..2]);
             string_length = bs58::encode(&version_buffer[..35])
                 .onto(string_buffer.as_mut())
@@ -195,15 +192,15 @@ impl PublicKey {
             version_buffer[0] = first | 0b01000000;
             version_buffer[1] = second;
             version_buffer[2..34].copy_from_slice(self.as_ref());
-            hasher.update(&version_buffer[..34]);
-            hasher.finalize_into((&mut hash_buffer).into());
+            blake2::Digest::update(&mut hasher, &version_buffer[..34]);
+            blake2::Digest::finalize_into(hasher, (&mut hash_buffer).into());
             version_buffer[34..36].copy_from_slice(&hash_buffer[..2]);
             string_length = bs58::encode(&version_buffer[..]).onto(string_buffer.as_mut()).unwrap();
         }
 
         let utf8_str = core::str::from_utf8(&string_buffer[..string_length]).expect("Should be infallible!");
 
-        Ss58String::from_str(utf8_str).expect("Should be infallible!")
+        <Ss58String as core::str::FromStr>::from_str(utf8_str).expect("Should be infallible!")
     }
 
     pub fn get_main_address(&self) -> Ss58String {
@@ -232,8 +229,8 @@ impl PublicKey {
             return Err(crate::errors::Error::InvalidSs58String);
         }
 
-        let mut hasher = blake2::Blake2b512::new();
-        hasher.update(Self::PREFIX_BUFFER_SS58);
+        let mut hasher = <blake2::Blake2b512 as blake2::Digest>::new();
+        blake2::Digest::update(&mut hasher, Self::PREFIX_BUFFER_SS58);
         let mut hash_buffer = [0u8; 64]; // 512-bit
         let mut decoded_buffer = [0u8; Self::SS58_BYTES_LENGTH];
         let decode_length = bs58::decode(ss58_string)
@@ -246,8 +243,8 @@ impl PublicKey {
                 return Err(crate::errors::Error::InvalidSs58String);
             }
 
-            hasher.update(&decoded_buffer[..33]);
-            hasher.finalize_into((&mut hash_buffer).into());
+            blake2::Digest::update(&mut hasher, &decoded_buffer[..33]);
+            blake2::Digest::finalize_into(hasher, (&mut hash_buffer).into());
 
             if hash_buffer[..2] != decoded_buffer[33..35] {
                 return Err(crate::errors::Error::InvalidSs58String);
@@ -259,8 +256,8 @@ impl PublicKey {
                 return Err(crate::errors::Error::InvalidSs58String);
             }
 
-            hasher.update(&decoded_buffer[..34]);
-            hasher.finalize_into((&mut hash_buffer).into());
+            blake2::Digest::update(&mut hasher, &decoded_buffer[..34]);
+            blake2::Digest::finalize_into(hasher, (&mut hash_buffer).into());
 
             if hash_buffer[..2] != decoded_buffer[34..36] {
                 return Err(crate::errors::Error::InvalidSs58String);
@@ -276,13 +273,13 @@ impl PublicKey {
         matches!(self, Self::Sr25519(..) | Self::ApparentlyBoth { .. })
     }
 
-    pub fn get_hex_string(&self) -> arrayvec::ArrayString<{ Self::LEN_PUBLIC_KEY * 2 }> {
+    pub fn get_hex_string(&self) -> HexString {
         let bytes = self.as_ref();
         let mut output_buffer = [0; { Self::LEN_PUBLIC_KEY * 2 }];
         hex::encode_to_slice(bytes, &mut output_buffer).expect("Should be infallible!");
         let utf8_str = core::str::from_utf8(&output_buffer).expect("Should be infallible!");
 
-        arrayvec::ArrayString::from_str(utf8_str).expect("Should be infallible!")
+        <HexString as core::str::FromStr>::from_str(utf8_str).expect("Should be infallible!")
     }
 
     pub fn to_bytes(&self) -> PublicKeyBytes {
@@ -301,7 +298,7 @@ impl PublicKey {
                 let signature = Ed25519Signature::from_slice(signature_bytes)
                     .map_err(|_| crate::errors::Error::InvalidSignatureFormat)?;
 
-                Ok(inner.verify(message, &signature).is_ok())
+                Ok(ed25519_dalek::Verifier::verify(inner, message, &signature).is_ok())
             }
             Self::Sr25519(inner) => {
                 let signature = Sr25519Signature::from_bytes(signature_bytes)
@@ -318,7 +315,7 @@ impl PublicKey {
                 let signature = Ed25519Signature::from_slice(signature_bytes)
                     .map_err(|_| crate::errors::Error::InvalidSignatureFormat)?;
 
-                if ed25519.verify(message, &signature).is_ok() {
+                if ed25519_dalek::Verifier::verify(ed25519, message, &signature).is_ok() {
                     return Ok(true);
                 }
 

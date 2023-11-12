@@ -1,5 +1,3 @@
-use ed25519_dalek::Signer;
-
 pub type PrivateKeyBytes = [u8; PrivateKey::LEN_PRIVATE_KEY];
 
 #[derive(core::cmp::Eq, core::cmp::PartialEq)]
@@ -8,12 +6,6 @@ pub type PrivateKeyBytes = [u8; PrivateKey::LEN_PRIVATE_KEY];
 #[derive(zeroize::Zeroize, zeroize::ZeroizeOnDrop)]
 pub struct PrivateKey {
     inner: PrivateKeyBytes,
-}
-
-impl core::default::Default for PrivateKey {
-    fn default() -> Self {
-        Self::generate()
-    }
 }
 
 impl core::convert::From<PrivateKeyBytes> for PrivateKey {
@@ -68,9 +60,9 @@ impl PrivateKey {
     pub const EXPANSION_MODE_SR25519: schnorrkel::ExpansionMode = schnorrkel::MiniSecretKey::ED25519_MODE;
     pub const LEN_PRIVATE_KEY: usize = 32;
 
-    pub fn generate() -> Self {
+    pub fn generate<RNG: rand_core::CryptoRng + rand_core::RngCore>(rng: &mut RNG) -> Self {
         let mut inner = PrivateKeyBytes::default();
-        getrandom::getrandom(&mut inner).expect("Catastrophic failure on crypto system!");
+        rand_core::RngCore::fill_bytes(rng, &mut inner);
 
         Self {
             inner,
@@ -97,10 +89,12 @@ impl PrivateKey {
     }
 
     pub fn try_from_phrase(source: &str, password: &str) -> crate::Result<Self> {
-        let mnemonic_phrase = crate::mnemonic::MnemonicPhrase::try_from(source)?;
-        let entropy = mnemonic_phrase.try_get_entropy()?;
-        let mini_secret = crate::mnemonic::mini_secret::sr25519_mini_secret_from_entropy(entropy.as_ref(), password)?;
-        let inner = mini_secret.to_bytes();
+        let mnemonic_phrase = nagara_mnemonic::MnemonicPhrase::try_from(source).map_err(crate::Error::from)?;
+        let secret_seed = mnemonic_phrase
+            .try_get_secret_seed(password)
+            .map_err(crate::Error::from)?;
+        let mut inner = PrivateKeyBytes::default();
+        inner.copy_from_slice(&secret_seed[..32]);
 
         Ok(Self {
             inner,
@@ -134,7 +128,7 @@ impl PrivateKey {
         } else {
             let keypair = ed25519_dalek::SigningKey::from_bytes(&self.inner);
 
-            keypair.sign(message).into()
+            ed25519_dalek::Signer::sign(&keypair, message).into()
         }
     }
 }

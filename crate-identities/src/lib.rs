@@ -1,4 +1,4 @@
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 #![forbid(unsafe_code)]
 #![allow(clippy::large_enum_variant)]
 #![deny(warnings)]
@@ -7,11 +7,12 @@
 compile_error!("Feature \"aarch64\" can't be combined with \"wasm32\".");
 
 pub mod errors;
-pub mod mnemonic;
 pub mod private;
 pub mod public;
 
-pub type Result<T> = core::result::Result<T, errors::Error>;
+pub use errors::Error;
+
+pub type Result<T> = core::result::Result<T, crate::Error>;
 pub type SignatureBytes = [u8; LEN_SIGNATURE];
 pub type SharedKeyBytes = [u8; LEN_SHARED_KEY];
 
@@ -70,8 +71,8 @@ impl core::convert::From<crate::public::PublicKey> for CryptographicIdentity {
 }
 
 impl CryptographicIdentity {
-    pub fn generate() -> Self {
-        crate::private::PrivateKey::generate().into()
+    pub fn generate<RNG: rand_core::CryptoRng + rand_core::RngCore>(rng: &mut RNG) -> Self {
+        crate::private::PrivateKey::generate(rng).into()
     }
 
     pub fn try_from_public_bytes(source: &[u8]) -> Result<Self> {
@@ -413,8 +414,10 @@ mod tests {
 
     #[test]
     fn many_random_sr25519_is_generated_correctly() {
+        let mut rng = rand_core::OsRng::default();
+
         for _ in 0..RANDOM_TEST_COUNT {
-            let random_mnemonic = crate::mnemonic::MnemonicPhrase::generate();
+            let random_mnemonic = nagara_mnemonic::MnemonicPhrase::generate(&mut rng);
             let error_message = format!("Error on mnemonic: \"{}\"", random_mnemonic.deref());
             let (substrate_sr25519_keypair, substrate_secret_seed_bytes) =
                 Sr25519KeyPair::from_phrase(&random_mnemonic, None).expect(&error_message);
@@ -436,8 +439,10 @@ mod tests {
 
     #[test]
     fn many_random_ed25519_is_generated_correctly() {
+        let mut rng = rand_core::OsRng::default();
+
         for _ in 0..RANDOM_TEST_COUNT {
-            let random_mnemonic = crate::mnemonic::MnemonicPhrase::generate();
+            let random_mnemonic = nagara_mnemonic::MnemonicPhrase::generate(&mut rng);
             let error_message = format!("Error on mnemonic: \"{}\"", random_mnemonic.deref());
             let (substrate_ed25519_keypair, substrate_secret_seed_bytes) =
                 Ed25519KeyPair::from_phrase(&random_mnemonic, None).expect(&error_message);

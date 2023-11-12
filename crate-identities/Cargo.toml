@@ -10,16 +10,14 @@ version.workspace = true
 
 [dependencies]
 arrayvec.workspace = true
-bitvec.workspace = true
 blake2.workspace = true
 bs58.workspace = true
 curve25519-dalek.workspace = true
 ed25519-dalek.workspace = true
-getrandom.workspace = true
 hex.workspace = true
-itertools.workspace = true
+nagara-mnemonic.workspace = true
 parity-scale-codec.workspace = true
-pbkdf2.workspace = true
+rand_core.workspace = true
 schnorrkel.workspace = true
 serde.workspace = true
 sha2.workspace = true
@@ -29,9 +27,25 @@ zeroize.workspace = true
 
 [dev-dependencies]
 sp-core = "24.0.0"
+rand_core = { workspace = true, features = ["std"] }
 test-case = { version = "3.2.1", features = ["with-regex"] }
 
 [features]
 default = []
-aarch64 = ["zeroize/aarch64"]
-wasm32 = ["getrandom/js"]
+std = [
+    "arrayvec/std",
+    "blake2/std",
+    "bs58/std",
+    "ed25519-dalek/std",
+    "hex/std",
+    "nagara-mnemonic/std",
+    "parity-scale-codec/std",
+    "rand_core/std",
+    "schnorrkel/std",
+    "serde/std",
+    "sha2/std",
+    "ss58-registry/std",
+    "thiserror-no-std/std",
+    "zeroize/std",
+]
+opt-aarch64 = ["std", "nagara-mnemonic/opt-aarch64", "zeroize/aarch64"]

@@ -3,14 +3,8 @@
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(i32)]
 pub enum Error {
-    #[error("Invalid entropy length, must be 16 (12-words phrase)")]
-    InvalidEntropyLength,
-    #[error("Password too long, maximum password length is 512")]
-    PasswordTooLong,
-    #[error("Invalid mnemonic words")]
-    InvalidMnemonicWords,
-    #[error("Memory poisoning during entropy extraction")]
-    MemoryPoisoningDuringEntropyExtraction,
+    #[error(transparent)]
+    MnemonicError(#[from] nagara_mnemonic::Error),
     #[error("Invalid hex length")]
     InvalidHexLength,
     #[error("Invalid hex character")]
