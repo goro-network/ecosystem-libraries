@@ -6,5 +6,5 @@ Convenience library for logging
 
 Either:
 
-- `default` which enables [env_logger](https://crates.io/crates/env_logger)
-- `wasm32` which enables [console_log](https://crates.io/crates/console_log)
+- `main` which enables [env_logger](https://crates.io/crates/env_logger)
+- `wasm32` which enables [gloo-console](https://crates.io/crates/gloo-console)
