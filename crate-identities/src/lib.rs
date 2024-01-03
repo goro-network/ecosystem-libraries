@@ -16,7 +16,7 @@ pub type Result<T> = core::result::Result<T, crate::Error>;
 pub type SignatureBytes = [u8; LEN_SIGNATURE];
 pub type SharedKeyBytes = [u8; LEN_SHARED_KEY];
 
-pub const LEN_SHARED_KEY: usize = 64;
+pub const LEN_SHARED_KEY: usize = 32;
 pub const LEN_SIGNATURE: usize = 64;
 pub const SIGNING_CONTEXT_SR25519: &[u8] = b"substrate";
 
@@ -96,6 +96,13 @@ impl CryptographicIdentity {
         }
     }
 
+    pub fn is_edward(&self) -> bool {
+        match self {
+            Self::OwnedKey { .. } => true,
+            Self::OthersKey { public } => public.is_edward(),
+        }
+    }
+
     pub fn try_sign(&self, with_schnorrkel: bool, message: &[u8]) -> Result<SignatureBytes> {
         match self {
             Self::OthersKey { .. } => Err(crate::errors::Error::SigningDenied),
@@ -131,9 +138,7 @@ impl CryptographicIdentity {
             Self::OthersKey { public } => match public {
                 crate::public::PublicKey::Ed25519(_) => Some(*public),
                 crate::public::PublicKey::Sr25519(_) => None,
-                crate::public::PublicKey::ApparentlyBoth { ed25519, .. } => {
-                    Some(crate::public::PublicKey::Ed25519(*ed25519))
-                }
+                &crate::public::PublicKey::ApparentlyBoth { .. } => Some(*public),
             },
             Self::OwnedKey { public_edward, .. } => Some(*public_edward),
         }
@@ -144,9 +149,7 @@ impl CryptographicIdentity {
             Self::OthersKey { public } => match public {
                 crate::public::PublicKey::Ed25519(_) => None,
                 crate::public::PublicKey::Sr25519(_) => Some(*public),
-                crate::public::PublicKey::ApparentlyBoth { sr25519, .. } => {
-                    Some(crate::public::PublicKey::Sr25519(*sr25519))
-                }
+                &crate::public::PublicKey::ApparentlyBoth { .. } => Some(*public),
             },
             Self::OwnedKey { public_schnorrkel, .. } => Some(*public_schnorrkel),
         }
@@ -158,11 +161,7 @@ impl CryptographicIdentity {
             Self::OthersKey { public } => match public {
                 crate::public::PublicKey::Ed25519(_) => Some(Self::OthersKey { public: *public }),
                 crate::public::PublicKey::Sr25519(_) => None,
-                crate::public::PublicKey::ApparentlyBoth { ed25519, .. } => {
-                    let public = ed25519.into();
-
-                    Some(Self::OthersKey { public })
-                }
+                &crate::public::PublicKey::ApparentlyBoth { .. } => Some(Self::OthersKey { public: *public }),
             },
         }
     }
@@ -175,74 +174,54 @@ impl CryptographicIdentity {
             Self::OthersKey { public } => match public {
                 crate::public::PublicKey::Ed25519(_) => None,
                 crate::public::PublicKey::Sr25519(_) => Some(Self::OthersKey { public: *public }),
-                crate::public::PublicKey::ApparentlyBoth { sr25519, .. } => {
-                    let public = sr25519.into();
-
-                    Some(Self::OthersKey { public })
-                }
+                &crate::public::PublicKey::ApparentlyBoth { .. } => Some(Self::OthersKey { public: *public }),
             },
         }
     }
 
-    pub fn try_create_sending_key(&self, receiver_key: &Self) -> Result<SharedKeyBytes> {
-        if !self.is_owned() {
-            return Err(crate::errors::Error::SenderKeyIsNotOwnedOnSending);
+    pub fn try_get_shared_secret(&self, other_key: &Self) -> Result<SharedKeyBytes> {
+        match (
+            self.is_edward(),
+            self.is_owned(),
+            other_key.is_edward(),
+            other_key.is_owned(),
+        ) {
+            (false, _, _, _) => Result::Err(Error::SchnorrkelIsNotSupported),
+            (_, _, false, _) => Result::Err(Error::SchnorrkelIsNotSupported),
+            (_, false, _, false) => Result::Err(Error::NeitherKeysAreOwned),
+            (_, true, _, _) => {
+                let owned_id = self;
+                let other_id = other_key;
+                let edward_sk = owned_id.try_get_private_key().unwrap();
+                let edward_pk = other_id.try_get_public_ed25519().unwrap();
+                let edward_pk =
+                    ed25519_compact::PublicKey::from_slice(edward_pk.as_ref()).expect("Should be infallible");
+                let edward_kp = ed25519_compact::KeyPair::from_seed(ed25519_compact::Seed::new(edward_sk.into()));
+                let dh_kp = ed25519_compact::x25519::KeyPair::from_ed25519(&edward_kp).expect("Should be infallible");
+                let dh_pk = ed25519_compact::x25519::PublicKey::from_ed25519(&edward_pk).expect("Should be infallible");
+                let dh_output = dh_pk.dh(&dh_kp.sk).map_err(|_| Error::WeakEdwardPublicKey)?;
+                let mut shared_key_bytes = SharedKeyBytes::default();
+                shared_key_bytes.copy_from_slice(dh_output.as_slice());
+
+                Result::Ok(shared_key_bytes)
+            }
+            (_, false, _, true) => {
+                let owned_id = other_key;
+                let other_id = self;
+                let edward_sk = owned_id.try_get_private_key().unwrap();
+                let edward_pk = other_id.try_get_public_ed25519().unwrap();
+                let edward_pk =
+                    ed25519_compact::PublicKey::from_slice(edward_pk.as_ref()).expect("Should be infallible");
+                let edward_kp = ed25519_compact::KeyPair::from_seed(ed25519_compact::Seed::new(edward_sk.into()));
+                let dh_kp = ed25519_compact::x25519::KeyPair::from_ed25519(&edward_kp).expect("Should be infallible");
+                let dh_pk = ed25519_compact::x25519::PublicKey::from_ed25519(&edward_pk).expect("Should be infallible");
+                let dh_output = dh_pk.dh(&dh_kp.sk).map_err(|_| Error::WeakEdwardPublicKey)?;
+                let mut shared_key_bytes = SharedKeyBytes::default();
+                shared_key_bytes.copy_from_slice(dh_output.as_slice());
+
+                Result::Ok(shared_key_bytes)
+            }
         }
-
-        if receiver_key.is_owned() {
-            return Err(crate::errors::Error::ReceiverKeyIsOwnedOnSending);
-        }
-
-        if receiver_key.is_schnorrkel() {
-            return Err(crate::errors::Error::SchnorrkelIsNotSupported);
-        }
-
-        let secret_key = self.try_get_private_key().unwrap();
-        let public_key_bytes = receiver_key.try_get_public_ed25519().unwrap().to_bytes();
-        let public_key_compressed = curve25519_dalek::edwards::CompressedEdwardsY(public_key_bytes);
-        let public_key_point = public_key_compressed
-            .decompress()
-            .ok_or(crate::errors::Error::EdwardsPointDecompressionFailure)?;
-        let secret_key_scalar = secret_key.get_edward_scalar();
-        let shared_point = public_key_point * secret_key_scalar;
-        let shared_point_compressed = shared_point.compress();
-        let shared_point_bytes = shared_point_compressed.to_bytes();
-        let sender_public_key_bytes = secret_key.get_publickey_ed25519().to_bytes();
-        let mut shared_key = [0; LEN_SHARED_KEY];
-        shared_key[..32].copy_from_slice(&sender_public_key_bytes);
-        shared_key[32..].copy_from_slice(&shared_point_bytes);
-
-        Ok(shared_key)
-    }
-
-    pub fn try_create_receiving_key(&self, sender_key: &Self) -> Result<SharedKeyBytes> {
-        if !self.is_owned() {
-            return Err(crate::errors::Error::ReceiverKeyIsNotOwnedOnReceiving);
-        }
-
-        if sender_key.is_owned() {
-            return Err(crate::errors::Error::SenderKeyIsOwnedOnReceiving);
-        }
-
-        if sender_key.is_schnorrkel() {
-            return Err(crate::errors::Error::SchnorrkelIsNotSupported);
-        }
-
-        let secret_key = self.try_get_private_key().unwrap();
-        let public_key_bytes = sender_key.try_get_public_ed25519().unwrap().to_bytes();
-        let public_key_compressed = curve25519_dalek::edwards::CompressedEdwardsY(public_key_bytes);
-        let public_key_point = public_key_compressed
-            .decompress()
-            .ok_or(crate::errors::Error::EdwardsPointDecompressionFailure)?;
-        let secret_key_scalar = secret_key.get_edward_scalar();
-        let shared_point = public_key_point * secret_key_scalar;
-        let shared_point_compressed = shared_point.compress();
-        let shared_point_bytes = shared_point_compressed.to_bytes();
-        let mut shared_key = [0; LEN_SHARED_KEY];
-        shared_key[..32].copy_from_slice(&public_key_bytes);
-        shared_key[32..].copy_from_slice(&shared_point_bytes);
-
-        Ok(shared_key)
     }
 }
 
@@ -393,6 +372,24 @@ mod tests {
             assert_eq!(nagara_private_key_bytes, substrate_secret_seed_bytes);
             assert_eq!(nagara_ed25519_public_bytes, substrate_ed25519_public_bytes);
             assert_eq!(nagara_ss58.to_string(), substrate_nagara_ss58);
+        }
+    }
+
+    #[test]
+    fn shared_key_should_be_idempotent() {
+        let mut rng = rand_core::OsRng::default();
+
+        for _ in 0..RANDOM_TEST_COUNT {
+            let alice = CryptographicIdentity::generate(&mut rng);
+            let bob = CryptographicIdentity::generate(&mut rng);
+            let shared_key_alice_side = alice
+                .try_get_shared_secret(&bob.try_get_otherskey_ed25519().unwrap())
+                .unwrap();
+            let shared_key_bob_side = bob
+                .try_get_shared_secret(&alice.try_get_otherskey_ed25519().unwrap())
+                .unwrap();
+
+            assert_eq!(shared_key_alice_side, shared_key_bob_side);
         }
     }
 }

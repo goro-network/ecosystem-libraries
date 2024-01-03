@@ -99,14 +99,9 @@ impl PrivateKey {
     }
 
     pub fn get_publickey_ed25519(&self) -> crate::public::PublicKey {
-        let keypair = ed25519_dalek::SigningKey::from_bytes(&self.inner);
-        let pubkey = keypair.verifying_key();
+        let keypair = ed25519_compact::KeyPair::from_seed(ed25519_compact::Seed::new(self.inner));
 
-        crate::public::PublicKey::from(pubkey)
-    }
-
-    pub fn get_edward_scalar(&self) -> curve25519_dalek::Scalar {
-        ed25519_dalek::SigningKey::from_bytes(&self.inner).to_scalar()
+        crate::public::PublicKey::from(keypair.pk)
     }
 
     pub fn sign(&self, with_schnorrkel: bool, message: &[u8]) -> crate::SignatureBytes {
@@ -116,9 +111,13 @@ impl PrivateKey {
 
             keypair.sign_simple(crate::SIGNING_CONTEXT_SR25519, message).to_bytes()
         } else {
-            let keypair = ed25519_dalek::SigningKey::from_bytes(&self.inner);
+            let keypair = ed25519_compact::KeyPair::from_seed(ed25519_compact::Seed::new(self.inner));
+            let noise = ed25519_compact::Noise::generate();
+            let signature = keypair.sk.sign(message, Some(noise));
+            let mut signature_bytes = [0; crate::LEN_SIGNATURE];
+            signature_bytes.copy_from_slice(signature.as_slice());
 
-            ed25519_dalek::Signer::sign(&keypair, message).into()
+            signature_bytes
         }
     }
 }

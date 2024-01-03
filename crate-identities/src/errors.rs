@@ -23,16 +23,10 @@ pub enum Error {
     InvalidPrivateKeyString,
     #[error("Signing is denied")]
     SigningDenied,
-    #[error("Sender key should be owned during sending")]
-    SenderKeyIsNotOwnedOnSending,
-    #[error("Sender key should not be owned during receiving")]
-    SenderKeyIsOwnedOnReceiving,
-    #[error("Receiver key should not be owned during sending")]
-    ReceiverKeyIsOwnedOnSending,
-    #[error("Receiver key should be owned during receiving")]
-    ReceiverKeyIsNotOwnedOnReceiving,
+    #[error("Neither keys are owned")]
+    NeitherKeysAreOwned,
     #[error("Schnorrkel is not supported for shared key generation")]
     SchnorrkelIsNotSupported,
-    #[error("EdwardsPoint cannot be decompressed")]
-    EdwardsPointDecompressionFailure,
+    #[error("Weak public key is not supported for key exchange")]
+    WeakEdwardPublicKey,
 }

@@ -1,3 +1,6 @@
+#![forbid(unsafe_code)]
+#![deny(warnings)]
+
 extern crate alloc;
 
 pub struct Cv25519Authenticator;
@@ -215,11 +218,7 @@ mod tests {
             HeaderName::from_static(Cv25519Authenticator::HEADER_SIGNATURE),
             HeaderValue::from_str(&alice_signature).unwrap(),
         );
-        let test_response = try_call_service(&test_service, test_request).await;
-
-        assert!(test_response.is_ok());
-
-        let test_response = test_response.unwrap();
+        let test_response = try_call_service(&test_service, test_request).await.unwrap();
         let test_bytes_response = test_response.into_body().try_into_bytes().unwrap().to_vec();
         let test_text_response = String::from_utf8(test_bytes_response).unwrap();
 

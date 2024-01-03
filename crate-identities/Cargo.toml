@@ -12,8 +12,11 @@ version.workspace = true
 arrayvec.workspace = true
 blake2.workspace = true
 bs58.workspace = true
-curve25519-dalek.workspace = true
-ed25519-dalek.workspace = true
+ed25519-compact = { version = "2.0.6", default-features = false, features = [
+    "opt_size",
+    "random",
+    "x25519",
+] }
 hex.workspace = true
 nagara-mnemonic.workspace = true
 parity-scale-codec.workspace = true
@@ -36,7 +39,7 @@ std = [
     "arrayvec/std",
     "blake2/std",
     "bs58/std",
-    "ed25519-dalek/std",
+    "ed25519-compact/std",
     "hex/std",
     "nagara-mnemonic/std",
     "parity-scale-codec/std",

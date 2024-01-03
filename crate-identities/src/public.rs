@@ -2,8 +2,8 @@ pub type PublicKeyBytes = [u8; PublicKey::LEN_PUBLIC_KEY];
 pub type Ss58String = arrayvec::ArrayString<{ PublicKey::SS58_STRING_MAX_LENGTH }>;
 pub type HexString = arrayvec::ArrayString<{ PublicKey::LEN_PUBLIC_KEY * 2 }>;
 
-type Ed25519PublicKey = ed25519_dalek::VerifyingKey;
-type Ed25519Signature = ed25519_dalek::Signature;
+type Ed25519PublicKey = ed25519_compact::PublicKey;
+type Ed25519Signature = ed25519_compact::Signature;
 type Sr25519PublicKey = schnorrkel::PublicKey;
 type Sr25519Signature = schnorrkel::Signature;
 
@@ -12,8 +12,8 @@ pub enum PublicKey {
     Ed25519(Ed25519PublicKey),
     Sr25519(Sr25519PublicKey),
     ApparentlyBoth {
-        ed25519: Ed25519PublicKey,
-        sr25519: Sr25519PublicKey,
+        edward: Ed25519PublicKey,
+        schnorrkel: Sr25519PublicKey,
     },
 }
 
@@ -70,7 +70,7 @@ impl core::convert::AsRef<[u8]> for PublicKey {
         match self {
             Self::Ed25519(inner) => inner.as_ref(),
             Self::Sr25519(inner) => inner.as_ref(),
-            Self::ApparentlyBoth { ed25519, .. } => ed25519.as_ref(),
+            Self::ApparentlyBoth { edward, .. } => edward.as_ref(),
         }
     }
 }
@@ -78,9 +78,19 @@ impl core::convert::AsRef<[u8]> for PublicKey {
 impl core::convert::From<PublicKey> for PublicKeyBytes {
     fn from(value: PublicKey) -> Self {
         match value {
-            PublicKey::Ed25519(inner) => inner.to_bytes(),
+            PublicKey::Ed25519(inner) => {
+                let mut result = PublicKeyBytes::default();
+                result.copy_from_slice(inner.as_slice());
+
+                result
+            }
             PublicKey::Sr25519(inner) => inner.to_bytes(),
-            PublicKey::ApparentlyBoth { ed25519, .. } => ed25519.to_bytes(),
+            PublicKey::ApparentlyBoth { edward, .. } => {
+                let mut result = PublicKeyBytes::default();
+                result.copy_from_slice(edward.as_slice());
+
+                result
+            }
         }
     }
 }
@@ -88,9 +98,19 @@ impl core::convert::From<PublicKey> for PublicKeyBytes {
 impl core::convert::From<&PublicKey> for PublicKeyBytes {
     fn from(value: &PublicKey) -> Self {
         match value {
-            PublicKey::Ed25519(inner) => inner.to_bytes(),
+            PublicKey::Ed25519(inner) => {
+                let mut result = PublicKeyBytes::default();
+                result.copy_from_slice(inner.as_slice());
+
+                result
+            }
             PublicKey::Sr25519(inner) => inner.to_bytes(),
-            PublicKey::ApparentlyBoth { ed25519, .. } => ed25519.to_bytes(),
+            PublicKey::ApparentlyBoth { edward, .. } => {
+                let mut result = PublicKeyBytes::default();
+                result.copy_from_slice(edward.as_slice());
+
+                result
+            }
         }
     }
 }
@@ -114,14 +134,14 @@ impl core::convert::TryFrom<&[u8]> for PublicKey {
         let mut supposed_pubkey = PublicKeyBytes::default();
         supposed_pubkey.copy_from_slice(value);
 
-        let maybe_sr25519 = Sr25519PublicKey::from_bytes(&supposed_pubkey[..]);
-        let maybe_ed25519 = Ed25519PublicKey::from_bytes(&supposed_pubkey);
+        let maybe_sr25519 = Sr25519PublicKey::from_bytes(&supposed_pubkey);
+        let maybe_ed25519 = Ed25519PublicKey::from_slice(&supposed_pubkey);
 
         match (maybe_sr25519, maybe_ed25519) {
-            (Ok(sr25519), Ok(ed25519)) => Ok(Self::ApparentlyBoth { ed25519, sr25519 }),
-            (Err(_), Err(_)) => Err(crate::errors::Error::InvalidPublicKeyBytes),
-            (Ok(sr25519), Err(_)) => Ok(Self::Sr25519(sr25519)),
-            (Err(_), Ok(ed25519)) => Ok(Self::Ed25519(ed25519)),
+            (Ok(schnorrkel), Ok(edward)) => crate::Result::Ok(Self::ApparentlyBoth { edward, schnorrkel }),
+            (Err(_), Err(_)) => crate::Result::Err(crate::errors::Error::InvalidPublicKeyBytes),
+            (Ok(sr25519), Err(_)) => crate::Result::Ok(Self::Sr25519(sr25519)),
+            (Err(_), Ok(ed25519)) => crate::Result::Ok(Self::Ed25519(ed25519)),
         }
     }
 }
@@ -215,7 +235,7 @@ impl PublicKey {
         let char_count = ss58_string.len();
 
         if !Self::SS58_STRING_LENGTH_RANGE.contains(&char_count) {
-            return Err(crate::errors::Error::InvalidSs58String);
+            return crate::Result::Err(crate::errors::Error::InvalidSs58String);
         }
 
         let mut hasher = <blake2::Blake2b512 as blake2::Digest>::new();
@@ -229,7 +249,7 @@ impl PublicKey {
 
         if (0..64).contains(&decoded_buffer[0]) {
             if decode_length != 35 {
-                return Err(crate::errors::Error::InvalidSs58String);
+                return crate::Result::Err(crate::errors::Error::InvalidSs58String);
             }
 
             blake2::Digest::update(&mut hasher, &decoded_buffer[..33]);
@@ -249,7 +269,7 @@ impl PublicKey {
             blake2::Digest::finalize_into(hasher, (&mut hash_buffer).into());
 
             if hash_buffer[..2] != decoded_buffer[34..36] {
-                return Err(crate::errors::Error::InvalidSs58String);
+                return crate::Result::Err(crate::errors::Error::InvalidSs58String);
             }
 
             inner.copy_from_slice(&decoded_buffer[2..34]);
@@ -260,6 +280,10 @@ impl PublicKey {
 
     pub fn is_schnorrkel(&self) -> bool {
         matches!(self, Self::Sr25519(..) | Self::ApparentlyBoth { .. })
+    }
+
+    pub fn is_edward(&self) -> bool {
+        matches!(self, Self::Ed25519(..) | Self::ApparentlyBoth { .. })
     }
 
     pub fn get_hex_string(&self) -> HexString {
@@ -279,38 +303,48 @@ impl PublicKey {
         let signature_len = signature_bytes.len();
 
         if signature_len != crate::LEN_SIGNATURE {
-            return Err(crate::errors::Error::InvalidSignatureLength);
+            return crate::Result::Err(crate::errors::Error::InvalidSignatureLength);
         }
+
+        let maybe_schnorrkel_signature = Sr25519Signature::from_bytes(signature_bytes);
+        let maybe_edward_signature = Ed25519Signature::from_slice(signature_bytes);
 
         match self {
             Self::Ed25519(inner) => {
-                let signature = Ed25519Signature::from_slice(signature_bytes)
-                    .map_err(|_| crate::errors::Error::InvalidSignatureFormat)?;
-
-                Ok(ed25519_dalek::Verifier::verify(inner, message, &signature).is_ok())
-            }
-            Self::Sr25519(inner) => {
-                let signature = Sr25519Signature::from_bytes(signature_bytes)
-                    .map_err(|_| crate::errors::Error::InvalidSignatureFormat)?;
-
-                Ok(inner
-                    .verify_simple(crate::SIGNING_CONTEXT_SR25519, message, &signature)
-                    .is_ok())
-            }
-            Self::ApparentlyBoth { ed25519, sr25519 } => {
-                let signature = Ed25519Signature::from_slice(signature_bytes)
-                    .map_err(|_| crate::errors::Error::InvalidSignatureFormat)?;
-
-                if ed25519_dalek::Verifier::verify(ed25519, message, &signature).is_ok() {
-                    return Ok(true);
+                if maybe_edward_signature.is_err() {
+                    return crate::Result::Err(crate::Error::InvalidSignatureFormat);
                 }
 
-                let signature = schnorrkel::Signature::from_bytes(signature_bytes)
-                    .map_err(|_| crate::errors::Error::InvalidSignatureFormat)?;
+                let signature = maybe_edward_signature.unwrap();
 
-                Ok(sr25519
-                    .verify_simple(crate::SIGNING_CONTEXT_SR25519, message, &signature)
-                    .is_ok())
+                crate::Result::Ok(inner.verify(message, &signature).is_ok())
+            }
+            Self::Sr25519(inner) => {
+                if maybe_schnorrkel_signature.is_err() {
+                    return crate::Result::Err(crate::Error::InvalidSignatureFormat);
+                }
+
+                let signature = maybe_schnorrkel_signature.unwrap();
+
+                crate::Result::Ok(
+                    inner
+                        .verify_simple(crate::SIGNING_CONTEXT_SR25519, message, &signature)
+                        .is_ok(),
+                )
+            }
+            Self::ApparentlyBoth { edward, schnorrkel } => {
+                if maybe_edward_signature.is_err() && maybe_schnorrkel_signature.is_err() {
+                    return crate::Result::Err(crate::Error::InvalidSignatureFormat);
+                }
+
+                let schnorrkel_signature = maybe_schnorrkel_signature.unwrap();
+                let edward_signature = maybe_edward_signature.unwrap();
+                let schnorrkel_verification = schnorrkel
+                    .verify_simple(crate::SIGNING_CONTEXT_SR25519, message, &schnorrkel_signature)
+                    .is_ok();
+                let edward_verification = edward.verify(message, &edward_signature).is_ok();
+
+                crate::Result::Ok(edward_verification | schnorrkel_verification)
             }
         }
     }
