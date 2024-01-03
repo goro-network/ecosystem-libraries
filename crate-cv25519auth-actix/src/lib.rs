@@ -1,6 +1,3 @@
-use actix_http::HttpMessage;
-use futures::StreamExt;
-
 extern crate alloc;
 
 pub struct Cv25519Authenticator;
@@ -85,7 +82,9 @@ impl<S> Cv25519AuthenticatorService<S> {
         let mut request_body = actix_web::web::BytesMut::new();
         let (_, mut original_payload) = actix_http::h1::Payload::create(true);
 
-        while let Some(chunk) = service_request.take_payload().next().await {
+        while let Some(chunk) =
+            futures::StreamExt::next(&mut actix_http::HttpMessage::take_payload(service_request)).await
+        {
             request_body.extend_from_slice(&chunk?);
         }
 
@@ -125,7 +124,7 @@ where
         alloc::boxed::Box::pin(async move {
             let payload_bytes = Self::try_get_payload(&mut service_request).await?;
             let verified_crypto_id = Self::try_get_verified_identity_from_headers(headers, &payload_bytes)?;
-            service_request.extensions_mut().insert(verified_crypto_id);
+            actix_web::HttpMessage::extensions_mut(&service_request).insert(verified_crypto_id);
             let service_promise = wrapped_service_clone.call(service_request);
             let service_result = service_promise.await?;
 

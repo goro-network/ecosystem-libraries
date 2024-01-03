@@ -11,13 +11,6 @@ pub use words::{ALL_MNEMONIC_WORDS, LEN_WORD_MAX};
 pub type Entropy = arrayvec::ArrayVec<u8, { MnemonicPhrase::get_entropy_len(24) }>;
 pub type Result<T> = core::result::Result<T, Error>;
 
-use bitvec::field::BitField;
-use bitvec::view::BitView;
-use core::ops::DerefMut;
-use core::str::FromStr;
-use sha2::Digest;
-use zeroize::Zeroize;
-
 type MnemonicInner = arrayvec::ArrayString<{ MnemonicPhrase::get_storage_length_from_count(24) }>;
 
 #[derive(core::clone::Clone, core::fmt::Debug)]
@@ -61,10 +54,7 @@ impl core::convert::TryFrom<&[&str]> for MnemonicPhrase {
             }
         }
 
-        Result::Ok(Self {
-            words,
-            count,
-        })
+        Result::Ok(Self { words, count })
     }
 }
 
@@ -94,12 +84,9 @@ impl core::convert::TryFrom<&str> for MnemonicPhrase {
             return Result::Err(Error::InvalidMnemonicWordsCount);
         }
 
-        let words = MnemonicInner::from_str(value).expect("Should be infallible!");
+        let words = <MnemonicInner as core::str::FromStr>::from_str(value).expect("Should be infallible!");
 
-        Result::Ok(Self {
-            words,
-            count,
-        })
+        Result::Ok(Self { words, count })
     }
 }
 
@@ -166,16 +153,13 @@ impl MnemonicPhrase {
         let mut entropy_and_checksum = zeroize::Zeroizing::new([0u8; { Self::LEN_MAX_ENTROPY + 1 }]);
         entropy_and_checksum[0..entropy_len].copy_from_slice(source);
         let entropy_ref = &entropy_and_checksum[0..entropy_len];
-        let checksum = (sha2::Sha256::digest(entropy_ref)[0] >> checksum_bit) << checksum_bit;
+        let checksum = (<sha2::Sha256 as sha2::Digest>::digest(entropy_ref)[0] >> checksum_bit) << checksum_bit;
         entropy_and_checksum[entropy_len] = checksum;
         let entropy_ref = &entropy_and_checksum[0..(entropy_len + 1)];
+        let binary_view = bitvec::view::BitView::view_bits::<bitvec::prelude::Msb0>(entropy_ref);
 
-        for (index, slot) in entropy_ref
-            .view_bits::<bitvec::prelude::Msb0>()
-            .chunks_exact(Self::MNEMONIC_BITS)
-            .enumerate()
-        {
-            let word_indice = slot.load_be::<u16>() as usize;
+        for (index, slot) in binary_view.chunks_exact(Self::MNEMONIC_BITS).enumerate() {
+            let word_indice = bitvec::field::BitField::load_be::<u16>(slot) as usize;
             words.push_str(words::ALL_MNEMONIC_WORDS[word_indice]);
 
             if index != last_index {
@@ -183,10 +167,7 @@ impl MnemonicPhrase {
             }
         }
 
-        Result::Ok(Self {
-            words,
-            count,
-        })
+        Result::Ok(Self { words, count })
     }
 
     pub fn try_generate_with_count<RNG: rand_core::CryptoRng + rand_core::RngCore>(
@@ -199,7 +180,7 @@ impl MnemonicPhrase {
 
         let entropy_len = Self::get_entropy_len(word_count);
         let mut entropy = zeroize::Zeroizing::new([0u8; Self::LEN_MAX_ENTROPY]);
-        rand_core::RngCore::fill_bytes(rng, entropy.deref_mut());
+        rand_core::RngCore::fill_bytes(rng, core::ops::DerefMut::deref_mut(&mut entropy));
 
         Self::try_from_entropy(&entropy[0..entropy_len])
     }
@@ -209,15 +190,15 @@ impl MnemonicPhrase {
         let mut entropy_and_checksum = zeroize::Zeroizing::new([0u8; { Self::LEN_MAX_ENTROPY + 1 }]);
         let entropy_and_checksum_ref_mut = &mut entropy_and_checksum[0..entropy_len + 1];
 
-        let binary_view = entropy_and_checksum_ref_mut
-            .view_bits_mut::<bitvec::prelude::Msb0>()
-            .chunks_exact_mut(Self::MNEMONIC_BITS);
+        let binary_view_mut =
+            bitvec::view::BitView::view_bits_mut::<bitvec::prelude::Msb0>(entropy_and_checksum_ref_mut)
+                .chunks_exact_mut(Self::MNEMONIC_BITS);
 
-        for (word, entropy_chunk) in self.words.split_whitespace().zip(binary_view) {
+        for (word, entropy_chunk) in self.words.split_whitespace().zip(binary_view_mut) {
             let word_indice = words::ALL_MNEMONIC_WORDS
                 .binary_search(&word)
                 .expect("Should be infallible!") as u16;
-            entropy_chunk.store_be(word_indice);
+            bitvec::field::BitField::store_be(entropy_chunk, word_indice);
         }
 
         let mut entropy = zeroize::Zeroizing::new(Entropy::default());
@@ -248,7 +229,7 @@ impl MnemonicPhrase {
             salt.as_bytes(),
             Self::LEN_ENTROPY_KDF_ROUND,
         ));
-        salt.zeroize();
+        zeroize::Zeroize::zeroize(&mut salt);
 
         Result::Ok(seed)
     }
