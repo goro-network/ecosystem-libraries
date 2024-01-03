@@ -7,8 +7,8 @@ pub struct Cv25519Authenticator;
 
 impl Cv25519Authenticator {
     pub const EMPTY_PAYLOAD: [u8; 4] = 0x600dd33d_u32.to_be_bytes();
-    pub const HEADER_IDENTITY: &str = "nagara-id";
-    pub const HEADER_SIGNATURE: &str = "nagara-signature";
+    pub const HEADER_IDENTITY: &'static str = "nagara-id";
+    pub const HEADER_SIGNATURE: &'static str = "nagara-signature";
 }
 
 impl<S, Req> actix_web::dev::Transform<S, actix_web::dev::ServiceRequest> for Cv25519Authenticator

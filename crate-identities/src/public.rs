@@ -70,9 +70,7 @@ impl core::convert::AsRef<[u8]> for PublicKey {
         match self {
             Self::Ed25519(inner) => inner.as_ref(),
             Self::Sr25519(inner) => inner.as_ref(),
-            Self::ApparentlyBoth {
-                ed25519, ..
-            } => ed25519.as_ref(),
+            Self::ApparentlyBoth { ed25519, .. } => ed25519.as_ref(),
         }
     }
 }
@@ -82,9 +80,7 @@ impl core::convert::From<PublicKey> for PublicKeyBytes {
         match value {
             PublicKey::Ed25519(inner) => inner.to_bytes(),
             PublicKey::Sr25519(inner) => inner.to_bytes(),
-            PublicKey::ApparentlyBoth {
-                ed25519, ..
-            } => ed25519.to_bytes(),
+            PublicKey::ApparentlyBoth { ed25519, .. } => ed25519.to_bytes(),
         }
     }
 }
@@ -94,9 +90,7 @@ impl core::convert::From<&PublicKey> for PublicKeyBytes {
         match value {
             PublicKey::Ed25519(inner) => inner.to_bytes(),
             PublicKey::Sr25519(inner) => inner.to_bytes(),
-            PublicKey::ApparentlyBoth {
-                ed25519, ..
-            } => ed25519.to_bytes(),
+            PublicKey::ApparentlyBoth { ed25519, .. } => ed25519.to_bytes(),
         }
     }
 }
@@ -124,12 +118,7 @@ impl core::convert::TryFrom<&[u8]> for PublicKey {
         let maybe_ed25519 = Ed25519PublicKey::from_bytes(&supposed_pubkey);
 
         match (maybe_sr25519, maybe_ed25519) {
-            (Ok(sr25519), Ok(ed25519)) => {
-                Ok(Self::ApparentlyBoth {
-                    ed25519,
-                    sr25519,
-                })
-            }
+            (Ok(sr25519), Ok(ed25519)) => Ok(Self::ApparentlyBoth { ed25519, sr25519 }),
             (Err(_), Err(_)) => Err(crate::errors::Error::InvalidPublicKeyBytes),
             (Ok(sr25519), Err(_)) => Ok(Self::Sr25519(sr25519)),
             (Err(_), Ok(ed25519)) => Ok(Self::Ed25519(ed25519)),
@@ -153,7 +142,7 @@ impl core::convert::TryFrom<&str> for PublicKey {
 
 impl PublicKey {
     pub const LEN_PUBLIC_KEY: usize = 32;
-    pub const PREFIX_BUFFER_SS58: &[u8; 7] = b"SS58PRE";
+    pub const PREFIX_BUFFER_SS58: &'static [u8; 7] = b"SS58PRE";
     pub const PREFIX_DEFAULT: u16 = Self::PREFIX_MAIN_NETWORK;
     pub const PREFIX_MAIN_NETWORK: u16 = ss58_registry::Ss58AddressFormatRegistry::NagaraAccount as u16;
     pub const PREFIX_STORAGE_NETWORK: u16 = ss58_registry::Ss58AddressFormatRegistry::NagaraStorageAccount as u16;
@@ -308,10 +297,7 @@ impl PublicKey {
                     .verify_simple(crate::SIGNING_CONTEXT_SR25519, message, &signature)
                     .is_ok())
             }
-            Self::ApparentlyBoth {
-                ed25519,
-                sr25519,
-            } => {
+            Self::ApparentlyBoth { ed25519, sr25519 } => {
                 let signature = Ed25519Signature::from_slice(signature_bytes)
                     .map_err(|_| crate::errors::Error::InvalidSignatureFormat)?;
 
