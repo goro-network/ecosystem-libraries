@@ -12,4 +12,6 @@ pub enum Error {
     InvalidMnemonicWords,
     #[error("Mnemonic words count is either 12, 15, 18, 21, 24")]
     InvalidMnemonicWordsCount,
+    #[error("Catastrophic failure on Random Number Generation")]
+    CatastrophicRNGFailure,
 }

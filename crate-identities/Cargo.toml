@@ -17,10 +17,10 @@ ed25519-compact = { version = "2.0.6", default-features = false, features = [
     "random",
     "x25519",
 ] }
+getrandom.workspace = true
 hex.workspace = true
 nagara-mnemonic.workspace = true
 parity-scale-codec.workspace = true
-rand_core.workspace = true
 schnorrkel.workspace = true
 serde.workspace = true
 sha2.workspace = true
@@ -40,10 +40,10 @@ std = [
     "blake2/std",
     "bs58/std",
     "ed25519-compact/std",
+    "getrandom/std",
     "hex/std",
     "nagara-mnemonic/std",
     "parity-scale-codec/std",
-    "rand_core/std",
     "schnorrkel/std",
     "serde/std",
     "sha2/std",
@@ -52,3 +52,4 @@ std = [
     "zeroize/std",
 ]
 opt-aarch64 = ["std", "nagara-mnemonic/opt-aarch64", "zeroize/aarch64"]
+wasm32 = ["getrandom/js", "nagara-mnemonic/wasm32"]

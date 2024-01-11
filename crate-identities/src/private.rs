@@ -10,7 +10,9 @@ pub struct PrivateKey {
 
 impl core::convert::From<PrivateKeyBytes> for PrivateKey {
     fn from(value: PrivateKeyBytes) -> Self {
-        Self { inner: value }
+        Self {
+            inner: value,
+        }
     }
 }
 
@@ -47,7 +49,9 @@ impl core::convert::TryFrom<&[u8]> for PrivateKey {
             let mut inner = PrivateKeyBytes::default();
             inner.copy_from_slice(value);
 
-            Ok(Self { inner })
+            Ok(Self {
+                inner,
+            })
         }
     }
 }
@@ -56,11 +60,13 @@ impl PrivateKey {
     pub const EXPANSION_MODE_SR25519: schnorrkel::ExpansionMode = schnorrkel::MiniSecretKey::ED25519_MODE;
     pub const LEN_PRIVATE_KEY: usize = 32;
 
-    pub fn generate<RNG: rand_core::CryptoRng + rand_core::RngCore>(rng: &mut RNG) -> Self {
+    pub fn generate() -> Self {
         let mut inner = PrivateKeyBytes::default();
-        rand_core::RngCore::fill_bytes(rng, &mut inner);
+        let _ = getrandom::getrandom(&mut inner);
 
-        Self { inner }
+        Self {
+            inner,
+        }
     }
 
     pub fn try_from_hex(source: &str) -> crate::Result<Self> {
@@ -77,7 +83,9 @@ impl PrivateKey {
         let mut inner = PrivateKeyBytes::default();
         hex::decode_to_slice(sanitized_maybe_hex, &mut inner).map_err(|_| crate::errors::Error::InvalidHexCharacter)?;
 
-        Ok(Self { inner })
+        Ok(Self {
+            inner,
+        })
     }
 
     pub fn try_from_phrase(source: &str, password: &str) -> crate::Result<Self> {
@@ -88,7 +96,9 @@ impl PrivateKey {
         let mut inner = PrivateKeyBytes::default();
         inner.copy_from_slice(&secret_seed[..32]);
 
-        Ok(Self { inner })
+        Ok(Self {
+            inner,
+        })
     }
 
     pub fn get_publickey_sr25519(&self) -> crate::public::PublicKey {

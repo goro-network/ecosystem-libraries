@@ -54,7 +54,10 @@ impl core::convert::TryFrom<&[&str]> for MnemonicPhrase {
             }
         }
 
-        Result::Ok(Self { words, count })
+        Result::Ok(Self {
+            words,
+            count,
+        })
     }
 }
 
@@ -86,7 +89,10 @@ impl core::convert::TryFrom<&str> for MnemonicPhrase {
 
         let words = <MnemonicInner as core::str::FromStr>::from_str(value).expect("Should be infallible!");
 
-        Result::Ok(Self { words, count })
+        Result::Ok(Self {
+            words,
+            count,
+        })
     }
 }
 
@@ -135,8 +141,8 @@ impl MnemonicPhrase {
         Self::get_storage_length(entropy_len)
     }
 
-    pub fn generate<RNG: rand_core::CryptoRng + rand_core::RngCore>(rng: &mut RNG) -> Self {
-        Self::try_generate_with_count(rng, Self::RECOMMENDED_WORD_COUNT).expect("Should be infallible!")
+    pub fn generate() -> Self {
+        Self::try_generate_with_count(Self::RECOMMENDED_WORD_COUNT).expect("Should be infallible!")
     }
 
     pub fn try_from_entropy(source: &[u8]) -> crate::Result<Self> {
@@ -167,20 +173,20 @@ impl MnemonicPhrase {
             }
         }
 
-        Result::Ok(Self { words, count })
+        Result::Ok(Self {
+            words,
+            count,
+        })
     }
 
-    pub fn try_generate_with_count<RNG: rand_core::CryptoRng + rand_core::RngCore>(
-        rng: &mut RNG,
-        word_count: usize,
-    ) -> crate::Result<Self> {
+    pub fn try_generate_with_count(word_count: usize) -> crate::Result<Self> {
         if !Self::LEGAL_WORDS_COUNT.contains(&word_count) {
             return Result::Err(Error::InvalidMnemonicWordsCount);
         }
 
         let entropy_len = Self::get_entropy_len(word_count);
         let mut entropy = zeroize::Zeroizing::new([0u8; Self::LEN_MAX_ENTROPY]);
-        rand_core::RngCore::fill_bytes(rng, core::ops::DerefMut::deref_mut(&mut entropy));
+        getrandom::getrandom(entropy.as_mut_slice()).map_err(|_| crate::Error::CatastrophicRNGFailure)?;
 
         Self::try_from_entropy(&entropy[0..entropy_len])
     }
@@ -347,10 +353,8 @@ mod tests {
     #[test_case::test_case(15 ; "mnemonic-15")]
     #[test_case::test_case(12 ; "mnemonic-12")]
     fn substrate_ed25519_is_compatible(word_count: usize) {
-        let mut rng = rand_core::OsRng::default();
-
         for _ in 0..TEST_REPETITIONS {
-            let random_mnemonic = MnemonicPhrase::try_generate_with_count(&mut rng, word_count).unwrap();
+            let random_mnemonic = MnemonicPhrase::try_generate_with_count(word_count).unwrap();
             let secret_seed = random_mnemonic.try_get_secret_seed("").unwrap();
             let (substrate_keypair, substrate_secret_seed) =
                 <sp_core::ed25519::Pair as sp_core::Pair>::from_phrase(&random_mnemonic, None).unwrap();

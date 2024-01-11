@@ -13,15 +13,16 @@ default = []
 std = [
     "arrayvec/std",
     "bitvec/std",
+    "getrandom/std",
     "parity-scale-codec/std",
     "pbkdf2/std",
-    "rand_core/std",
     "serde/std",
     "sha2/std",
     "thiserror-no-std/std",
     "zeroize/std",
 ]
 opt-aarch64 = ["std", "zeroize/aarch64"]
+wasm32 = ["getrandom/js"]
 
 [dev-dependencies]
 hex = { workspace = true, features = ["std"] }
@@ -32,9 +33,9 @@ tiny-bip39 = "1.0.0"
 [dependencies]
 arrayvec.workspace = true
 bitvec.workspace = true
+getrandom.workspace = true
 parity-scale-codec.workspace = true
 pbkdf2.workspace = true
-rand_core.workspace = true
 serde.workspace = true
 sha2.workspace = true
 thiserror-no-std.workspace = true
