@@ -70,7 +70,9 @@ impl core::convert::AsRef<[u8]> for PublicKey {
         match self {
             Self::Ed25519(inner) => inner.as_ref(),
             Self::Sr25519(inner) => inner.as_ref(),
-            Self::ApparentlyBoth { edward, .. } => edward.as_ref(),
+            Self::ApparentlyBoth {
+                edward, ..
+            } => edward.as_ref(),
         }
     }
 }
@@ -85,7 +87,9 @@ impl core::convert::From<PublicKey> for PublicKeyBytes {
                 result
             }
             PublicKey::Sr25519(inner) => inner.to_bytes(),
-            PublicKey::ApparentlyBoth { edward, .. } => {
+            PublicKey::ApparentlyBoth {
+                edward, ..
+            } => {
                 let mut result = PublicKeyBytes::default();
                 result.copy_from_slice(edward.as_slice());
 
@@ -105,7 +109,9 @@ impl core::convert::From<&PublicKey> for PublicKeyBytes {
                 result
             }
             PublicKey::Sr25519(inner) => inner.to_bytes(),
-            PublicKey::ApparentlyBoth { edward, .. } => {
+            PublicKey::ApparentlyBoth {
+                edward, ..
+            } => {
                 let mut result = PublicKeyBytes::default();
                 result.copy_from_slice(edward.as_slice());
 
@@ -138,7 +144,12 @@ impl core::convert::TryFrom<&[u8]> for PublicKey {
         let maybe_ed25519 = Ed25519PublicKey::from_slice(&supposed_pubkey);
 
         match (maybe_sr25519, maybe_ed25519) {
-            (Ok(schnorrkel), Ok(edward)) => crate::Result::Ok(Self::ApparentlyBoth { edward, schnorrkel }),
+            (Ok(schnorrkel), Ok(edward)) => {
+                crate::Result::Ok(Self::ApparentlyBoth {
+                    edward,
+                    schnorrkel,
+                })
+            }
             (Err(_), Err(_)) => crate::Result::Err(crate::errors::Error::InvalidPublicKeyBytes),
             (Ok(sr25519), Err(_)) => crate::Result::Ok(Self::Sr25519(sr25519)),
             (Err(_), Ok(ed25519)) => crate::Result::Ok(Self::Ed25519(ed25519)),
@@ -332,17 +343,27 @@ impl PublicKey {
                         .is_ok(),
                 )
             }
-            Self::ApparentlyBoth { edward, schnorrkel } => {
+            Self::ApparentlyBoth {
+                edward,
+                schnorrkel,
+            } => {
                 if maybe_edward_signature.is_err() && maybe_schnorrkel_signature.is_err() {
                     return crate::Result::Err(crate::Error::InvalidSignatureFormat);
                 }
 
-                let schnorrkel_signature = maybe_schnorrkel_signature.unwrap();
-                let edward_signature = maybe_edward_signature.unwrap();
-                let schnorrkel_verification = schnorrkel
-                    .verify_simple(crate::SIGNING_CONTEXT_SR25519, message, &schnorrkel_signature)
-                    .is_ok();
-                let edward_verification = edward.verify(message, &edward_signature).is_ok();
+                let edward_verification = if let Ok(edward_signature) = maybe_edward_signature {
+                    edward.verify(message, &edward_signature).is_ok()
+                } else {
+                    false
+                };
+
+                let schnorrkel_verification = if let Ok(schnorrkel_signature) = maybe_schnorrkel_signature {
+                    schnorrkel
+                        .verify_simple(crate::SIGNING_CONTEXT_SR25519, message, &schnorrkel_signature)
+                        .is_ok()
+                } else {
+                    false
+                };
 
                 crate::Result::Ok(edward_verification | schnorrkel_verification)
             }

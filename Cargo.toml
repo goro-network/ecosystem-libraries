@@ -7,7 +7,7 @@ edition = "2021"
 license = "MIT"
 publish = false
 repository = "https://github.com/nagara-network/ecosystem-libraries"
-version = "1.0.24-alpha.1"
+version = "1.0.24-alpha.3"
 
 [workspace]
 resolver = "2"
@@ -23,8 +23,8 @@ nagara-identities = { path = "crate-identities" }
 nagara-logging = { path = "crate-logging" }
 nagara-mnemonic = { path = "crate-mnemonic" }
 # crates.io
-actix-http = "3.4.0"
-actix-web = { version = "4.4.0", default-features = false }
+actix-http = "3.6.0"
+actix-web = { version = "4.5.1", default-features = false }
 arrayvec = { version = "0.7.4", default-features = false, features = ["serde", "zeroize"] }
 bitvec = { version = "1.0.1", default-features = false }
 blake2 = { version = "0.10.6", default-features = false }
@@ -43,17 +43,17 @@ ed25519-dalek = { version = "2.0.0", default-features = false, features = [
     "signature",
     "zeroize",
 ] }
-env_logger = { version = "0.10.1" }
-futures = { version = "0.3.29", default-features = false }
+env_logger = { version = "0.11.1" }
+futures = { version = "0.3.30", default-features = false }
 getrandom = "0.2.11"
 hex = { version = "0.4.3", default-features = false, features = ["serde"] }
-itertools = { version = "0.11.0", default-features = false }
+itertools = { version = "0.12.1", default-features = false }
 log = { version = "0.4.20", default-features = false, features = [
     "max_level_debug",
     "release_max_level_info",
     "serde",
 ] }
-parity-scale-codec = { version = "3.6.5", default-features = false, features = [
+parity-scale-codec = { version = "3.6.9", default-features = false, features = [
     "bitvec",
     "derive",
     "max-encoded-len",
@@ -61,9 +61,9 @@ parity-scale-codec = { version = "3.6.5", default-features = false, features = [
 ] }
 pbkdf2 = { version = "0.12.2", default-features = false, features = ["hmac", "sha2"] }
 rand_core = { version = "0.6.4", default-features = false }
-serde = { version = "1.0.192", default-features = false, features = ["derive"] }
-schnorrkel = { version = "0.11.3", default-features = false, features = ["getrandom"] }
+serde = { version = "1.0.196", default-features = false, features = ["derive"] }
+schnorrkel = { version = "0.11.4", default-features = false, features = ["getrandom"] }
 sha2 = { version = "0.10.8", default-features = false }
 ss58-registry = { git = "https://github.com/nagara-network/ss58-registry", default-features = false, rev = "0038a88" }
 thiserror-no-std = "2.0.2"
-zeroize = { version = "1.6.0", default-features = false, features = ["derive"] }
+zeroize = { version = "1.7.0", default-features = false, features = ["derive"] }
