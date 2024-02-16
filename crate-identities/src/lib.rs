@@ -128,7 +128,7 @@ impl CryptographicIdentity {
         }
     }
 
-    pub fn verify(&self, signature_bytes: &[u8], message: &[u8]) -> Result<bool> {
+    pub fn verify(&mut self, signature_bytes: &[u8], message: &[u8]) -> Result<bool> {
         match self {
             Self::OthersKey {
                 public,

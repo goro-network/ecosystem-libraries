@@ -64,7 +64,7 @@ impl<S> Cv25519AuthenticatorService<S> {
         let maybe_valid_signature = Self::try_get_header_value(&headers, Cv25519Authenticator::HEADER_SIGNATURE)?;
         let maybe_valid_signature = hex::decode(maybe_valid_signature)
             .map_err(|inner_err| actix_web::error::ErrorUnauthorized(inner_err.to_string()))?;
-        let valid_identity = nagara_identities::CryptographicIdentity::try_from_public_str(maybe_valid_crypto_id)
+        let mut valid_identity = nagara_identities::CryptographicIdentity::try_from_public_str(maybe_valid_crypto_id)
             .map_err(|inner_err| actix_web::error::ErrorUnauthorized(inner_err.to_string()))?;
         let verified_signature = valid_identity
             .verify(&maybe_valid_signature, payload_bytes)

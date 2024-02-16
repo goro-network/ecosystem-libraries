@@ -310,7 +310,7 @@ impl PublicKey {
         self.into()
     }
 
-    pub fn verify(&self, signature_bytes: &[u8], message: &[u8]) -> crate::Result<bool> {
+    pub fn verify(&mut self, signature_bytes: &[u8], message: &[u8]) -> crate::Result<bool> {
         let signature_len = signature_bytes.len();
 
         if signature_len != crate::LEN_SIGNATURE {
@@ -365,19 +365,25 @@ impl PublicKey {
                     false
                 };
 
+                match (edward_verification, schnorrkel_verification) {
+                    (true, false) => *self = Self::Ed25519(*edward),
+                    (false, true) => *self = Self::Sr25519(*schnorrkel),
+                    _ => (),
+                }
+
                 crate::Result::Ok(edward_verification | schnorrkel_verification)
             }
         }
     }
 
     pub fn verify_with_string_identity(string_identity: &str, signature: &[u8], message: &[u8]) -> crate::Result<bool> {
-        let instance = Self::try_from(string_identity)?;
+        let mut instance = Self::try_from(string_identity)?;
 
         instance.verify(signature, message)
     }
 
     pub fn verify_with_bytes_identity(bytes_account: &[u8], signature: &[u8], message: &[u8]) -> crate::Result<bool> {
-        let instance = Self::try_from(bytes_account)?;
+        let mut instance = Self::try_from(bytes_account)?;
 
         instance.verify(signature, message)
     }
@@ -461,8 +467,8 @@ mod tests {
 
     #[test]
     fn verify_alice_main_verification_is_correct() {
-        let sr25519_pubkey = PublicKey::try_from(ALICE_SR25519_MAIN).unwrap();
-        let ed25519_pubkey = PublicKey::try_from(ALICE_ED25519_MAIN).unwrap();
+        let mut sr25519_pubkey = PublicKey::try_from(ALICE_SR25519_MAIN).unwrap();
+        let mut ed25519_pubkey = PublicKey::try_from(ALICE_ED25519_MAIN).unwrap();
         let substrate_sr25519_keypair = Sr25519KeyPair::from_string(ALICE_MINISECRET_HEX, None).unwrap();
         let substrate_ed25519_keypair = Ed25519KeyPair::from_string(ALICE_MINISECRET_HEX, None).unwrap();
         let signature_sr25519 = substrate_sr25519_keypair.sign(ALICE_MESSAGE);
@@ -484,8 +490,8 @@ mod tests {
 
     #[test]
     fn verify_alice_storage_verification_is_correct() {
-        let sr25519_pubkey = PublicKey::try_from(ALICE_SR25519_STORAGE).unwrap();
-        let ed25519_pubkey = PublicKey::try_from(ALICE_ED25519_STORAGE).unwrap();
+        let mut sr25519_pubkey = PublicKey::try_from(ALICE_SR25519_STORAGE).unwrap();
+        let mut ed25519_pubkey = PublicKey::try_from(ALICE_ED25519_STORAGE).unwrap();
         let substrate_sr25519_keypair = Sr25519KeyPair::from_string(ALICE_MINISECRET_HEX, None).unwrap();
         let substrate_ed25519_keypair = Ed25519KeyPair::from_string(ALICE_MINISECRET_HEX, None).unwrap();
         let signature_sr25519 = substrate_sr25519_keypair.sign(ALICE_MESSAGE);
