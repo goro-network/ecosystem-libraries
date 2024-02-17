@@ -20,7 +20,7 @@ pub const LEN_SHARED_KEY: usize = 32;
 pub const LEN_SIGNATURE: usize = 64;
 pub const SIGNING_CONTEXT_SR25519: &[u8] = b"substrate";
 
-#[derive(Clone)]
+#[derive(Clone, Eq)]
 #[derive(zeroize::Zeroize, zeroize::ZeroizeOnDrop)]
 pub enum CryptographicIdentity {
     OwnedKey {
@@ -34,6 +34,106 @@ pub enum CryptographicIdentity {
         #[zeroize(skip)]
         public: crate::public::PublicKey,
     },
+}
+
+impl PartialEq for CryptographicIdentity {
+    fn eq(&self, other: &Self) -> bool {
+        match self {
+            Self::OthersKey {
+                public,
+            } => {
+                match other {
+                    Self::OthersKey {
+                        public: other_public,
+                    } => public.eq(other_public),
+                    Self::OwnedKey {
+                        public_edward,
+                        public_schnorrkel,
+                        ..
+                    } => public.eq(public_edward) | public.eq(public_schnorrkel),
+                }
+            }
+            Self::OwnedKey {
+                public_edward,
+                public_schnorrkel,
+                ..
+            } => {
+                match other {
+                    Self::OthersKey {
+                        public,
+                    } => public_edward.eq(public) | public_schnorrkel.eq(public),
+                    Self::OwnedKey {
+                        public_schnorrkel: other_public_schnorrkel,
+                        ..
+                    } => public_schnorrkel.eq(other_public_schnorrkel),
+                }
+            }
+        }
+    }
+}
+
+impl PartialOrd for CryptographicIdentity {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        match self {
+            Self::OthersKey {
+                public,
+            } => {
+                match other {
+                    Self::OthersKey {
+                        public: other_public,
+                    } => Some(public.cmp(other_public)),
+                    Self::OwnedKey {
+                        public_schnorrkel, ..
+                    } => Some(public.cmp(public_schnorrkel)),
+                }
+            }
+            Self::OwnedKey {
+                public_schnorrkel, ..
+            } => {
+                match other {
+                    Self::OthersKey {
+                        public,
+                    } => Some(public_schnorrkel.cmp(public)),
+                    Self::OwnedKey {
+                        public_schnorrkel: other_public_schnorrkel,
+                        ..
+                    } => Some(public_schnorrkel.cmp(other_public_schnorrkel)),
+                }
+            }
+        }
+    }
+}
+
+impl Ord for CryptographicIdentity {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        match self {
+            Self::OthersKey {
+                public,
+            } => {
+                match other {
+                    Self::OthersKey {
+                        public: other_public,
+                    } => public.cmp(other_public),
+                    Self::OwnedKey {
+                        public_schnorrkel, ..
+                    } => public.cmp(public_schnorrkel),
+                }
+            }
+            Self::OwnedKey {
+                public_schnorrkel, ..
+            } => {
+                match other {
+                    Self::OthersKey {
+                        public,
+                    } => public_schnorrkel.cmp(public),
+                    Self::OwnedKey {
+                        public_schnorrkel: other_public_schnorrkel,
+                        ..
+                    } => public_schnorrkel.cmp(other_public_schnorrkel),
+                }
+            }
+        }
+    }
 }
 
 impl core::hash::Hash for CryptographicIdentity {
