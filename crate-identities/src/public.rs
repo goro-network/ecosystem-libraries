@@ -17,6 +17,26 @@ pub enum PublicKey {
     },
 }
 
+impl parity_scale_codec::CompactAs for PublicKey {
+    type As = [u8; Self::LEN_PUBLIC_KEY];
+
+    fn encode_as(&self) -> &Self::As {
+        self.as_ref().try_into().unwrap()
+    }
+
+    fn decode_from(source: Self::As) -> Result<Self, parity_scale_codec::Error> {
+        let instance = Self::try_from(&source[..]).map_err(|_| parity_scale_codec::Error::from("Bad public key"))?;
+
+        Ok(instance)
+    }
+}
+
+impl core::convert::From<parity_scale_codec::Compact<PublicKey>> for PublicKey {
+    fn from(value: parity_scale_codec::Compact<PublicKey>) -> Self {
+        value.0
+    }
+}
+
 impl core::cmp::PartialEq for PublicKey {
     fn eq(&self, other: &Self) -> bool {
         self.as_ref().eq(other.as_ref())
