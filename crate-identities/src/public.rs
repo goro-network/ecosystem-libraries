@@ -330,7 +330,7 @@ impl PublicKey {
         self.into()
     }
 
-    pub fn verify(&mut self, signature_bytes: &[u8], message: &[u8]) -> crate::Result<bool> {
+    pub fn verify(&mut self, signature_bytes: &[u8], message: &[u8]) -> crate::Result<()> {
         let signature_len = signature_bytes.len();
 
         if signature_len != crate::LEN_SIGNATURE {
@@ -348,7 +348,9 @@ impl PublicKey {
 
                 let signature = maybe_edward_signature.unwrap();
 
-                crate::Result::Ok(inner.verify(message, &signature).is_ok())
+                inner
+                    .verify(message, &signature)
+                    .map_err(|_| crate::Error::SignatureIsNotAuthentic)
             }
             Self::Sr25519(inner) => {
                 if maybe_schnorrkel_signature.is_err() {
@@ -357,11 +359,9 @@ impl PublicKey {
 
                 let signature = maybe_schnorrkel_signature.unwrap();
 
-                crate::Result::Ok(
-                    inner
-                        .verify_simple(crate::SIGNING_CONTEXT_SR25519, message, &signature)
-                        .is_ok(),
-                )
+                inner
+                    .verify_simple(crate::SIGNING_CONTEXT_SR25519, message, &signature)
+                    .map_err(|_| crate::Error::SignatureIsNotAuthentic)
             }
             Self::ApparentlyBoth {
                 edward,
@@ -386,23 +386,29 @@ impl PublicKey {
                 };
 
                 match (edward_verification, schnorrkel_verification) {
-                    (true, false) => *self = Self::Ed25519(*edward),
-                    (false, true) => *self = Self::Sr25519(*schnorrkel),
-                    _ => (),
-                }
+                    (true, false) => {
+                        *self = Self::Ed25519(*edward);
 
-                crate::Result::Ok(edward_verification | schnorrkel_verification)
+                        crate::Result::Ok(())
+                    }
+                    (false, true) => {
+                        *self = Self::Sr25519(*schnorrkel);
+
+                        crate::Result::Ok(())
+                    }
+                    _ => crate::Result::Err(crate::Error::SignatureIsNotAuthentic),
+                }
             }
         }
     }
 
-    pub fn verify_with_string_identity(string_identity: &str, signature: &[u8], message: &[u8]) -> crate::Result<bool> {
+    pub fn verify_with_string_identity(string_identity: &str, signature: &[u8], message: &[u8]) -> crate::Result<()> {
         let mut instance = Self::try_from(string_identity)?;
 
         instance.verify(signature, message)
     }
 
-    pub fn verify_with_bytes_identity(bytes_account: &[u8], signature: &[u8], message: &[u8]) -> crate::Result<bool> {
+    pub fn verify_with_bytes_identity(bytes_account: &[u8], signature: &[u8], message: &[u8]) -> crate::Result<()> {
         let mut instance = Self::try_from(bytes_account)?;
 
         instance.verify(signature, message)
@@ -493,19 +499,10 @@ mod tests {
         let substrate_ed25519_keypair = Ed25519KeyPair::from_string(ALICE_MINISECRET_HEX, None).unwrap();
         let signature_sr25519 = substrate_sr25519_keypair.sign(ALICE_MESSAGE);
         let signature_ed25519 = substrate_ed25519_keypair.sign(ALICE_MESSAGE);
-        let signature_verification_sr25519 = sr25519_pubkey.verify(&signature_sr25519.0[..], ALICE_MESSAGE).unwrap();
-        let signature_verification_ed25519 = ed25519_pubkey.verify(&signature_ed25519.0[..], ALICE_MESSAGE).unwrap();
-        let signature_verification_anyhow_with_sr25519 =
-            PublicKey::verify_with_string_identity(ALICE_SR25519_MAIN, &signature_sr25519.0[..], ALICE_MESSAGE)
-                .unwrap();
-        let signature_verification_anyhow_with_ed25519 =
-            PublicKey::verify_with_string_identity(ALICE_ED25519_MAIN, &signature_ed25519.0[..], ALICE_MESSAGE)
-                .unwrap();
-
-        assert!(signature_verification_sr25519);
-        assert!(signature_verification_ed25519);
-        assert!(signature_verification_anyhow_with_sr25519);
-        assert!(signature_verification_anyhow_with_ed25519);
+        sr25519_pubkey.verify(&signature_sr25519.0[..], ALICE_MESSAGE).unwrap();
+        ed25519_pubkey.verify(&signature_ed25519.0[..], ALICE_MESSAGE).unwrap();
+        PublicKey::verify_with_string_identity(ALICE_SR25519_MAIN, &signature_sr25519.0[..], ALICE_MESSAGE).unwrap();
+        PublicKey::verify_with_string_identity(ALICE_ED25519_MAIN, &signature_ed25519.0[..], ALICE_MESSAGE).unwrap();
     }
 
     #[test]
@@ -516,18 +513,9 @@ mod tests {
         let substrate_ed25519_keypair = Ed25519KeyPair::from_string(ALICE_MINISECRET_HEX, None).unwrap();
         let signature_sr25519 = substrate_sr25519_keypair.sign(ALICE_MESSAGE);
         let signature_ed25519 = substrate_ed25519_keypair.sign(ALICE_MESSAGE);
-        let signature_verification_sr25519 = sr25519_pubkey.verify(&signature_sr25519.0[..], ALICE_MESSAGE).unwrap();
-        let signature_verification_ed25519 = ed25519_pubkey.verify(&signature_ed25519.0[..], ALICE_MESSAGE).unwrap();
-        let signature_verification_anyhow_with_sr25519 =
-            PublicKey::verify_with_string_identity(ALICE_SR25519_STORAGE, &signature_sr25519.0[..], ALICE_MESSAGE)
-                .unwrap();
-        let signature_verification_anyhow_with_ed25519 =
-            PublicKey::verify_with_string_identity(ALICE_ED25519_STORAGE, &signature_ed25519.0[..], ALICE_MESSAGE)
-                .unwrap();
-
-        assert!(signature_verification_sr25519);
-        assert!(signature_verification_ed25519);
-        assert!(signature_verification_anyhow_with_sr25519);
-        assert!(signature_verification_anyhow_with_ed25519);
+        sr25519_pubkey.verify(&signature_sr25519.0[..], ALICE_MESSAGE).unwrap();
+        ed25519_pubkey.verify(&signature_ed25519.0[..], ALICE_MESSAGE).unwrap();
+        PublicKey::verify_with_string_identity(ALICE_SR25519_STORAGE, &signature_sr25519.0[..], ALICE_MESSAGE).unwrap();
+        PublicKey::verify_with_string_identity(ALICE_ED25519_STORAGE, &signature_ed25519.0[..], ALICE_MESSAGE).unwrap();
     }
 }

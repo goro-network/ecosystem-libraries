@@ -66,17 +66,11 @@ impl<S> Cv25519AuthenticatorService<S> {
             .map_err(|inner_err| actix_web::error::ErrorUnauthorized(inner_err.to_string()))?;
         let mut valid_identity = nagara_identities::CryptographicIdentity::try_from_public_str(maybe_valid_crypto_id)
             .map_err(|inner_err| actix_web::error::ErrorUnauthorized(inner_err.to_string()))?;
-        let verified_signature = valid_identity
+        valid_identity
             .verify(&maybe_valid_signature, payload_bytes)
-            .map_err(|inner_err| actix_web::error::ErrorUnauthorized(inner_err.to_string()))?;
+            .map_err(|_| actix_web::error::ErrorUnauthorized("Crypto identity cannot be verified!"))?;
 
-        if verified_signature {
-            Ok(valid_identity)
-        } else {
-            Err(actix_web::error::ErrorUnauthorized(
-                "Crypto identity cannot be verified!",
-            ))
-        }
+        Ok(valid_identity)
     }
 
     async fn try_get_payload(

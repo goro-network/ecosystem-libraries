@@ -29,4 +29,6 @@ pub enum Error {
     SchnorrkelIsNotSupported,
     #[error("Weak public key is not supported for key exchange")]
     WeakEdwardPublicKey,
+    #[error("Signature is not authentic")]
+    SignatureIsNotAuthentic,
 }

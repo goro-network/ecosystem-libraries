@@ -1,0 +1,23 @@
+[package]
+name = "nagara-proto-structs"
+description = "nagara Network - Protocol Structures library"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[features]
+default = []
+std = ["blake3/std", "getrandom/std", "morus/std", "nagara-identities/std", "thiserror-no-std/std"]
+opt-aarch64 = ["std", "blake3/neon", "nagara-identities/opt-aarch64"]
+reference-sentinel = ["std"]
+wasm32 = ["blake3/pure", "getrandom/js", "nagara-identities/wasm32"]
+
+[dependencies]
+blake3.workspace = true
+getrandom.workspace = true
+morus.workspace = true
+nagara-identities.workspace = true
+thiserror-no-std.workspace = true

@@ -228,7 +228,7 @@ impl CryptographicIdentity {
         }
     }
 
-    pub fn verify(&mut self, signature_bytes: &[u8], message: &[u8]) -> Result<bool> {
+    pub fn verify(&mut self, signature_bytes: &[u8], message: &[u8]) -> Result<()> {
         match self {
             Self::OthersKey {
                 public,
@@ -238,10 +238,15 @@ impl CryptographicIdentity {
                 public_schnorrkel,
                 ..
             } => {
-                let ed25519_verification = public_edward.verify(signature_bytes, message)?;
-                let sr25519_verification = public_schnorrkel.verify(signature_bytes, message)?;
+                let ed25519_verification = public_edward.verify(signature_bytes, message).is_ok();
+                let sr25519_verification = public_schnorrkel.verify(signature_bytes, message).is_ok();
+                let verified_either_way = ed25519_verification | sr25519_verification;
 
-                Ok(ed25519_verification | sr25519_verification)
+                if verified_either_way {
+                    Result::Ok(())
+                } else {
+                    Result::Err(Error::SignatureIsNotAuthentic)
+                }
             }
         }
     }
