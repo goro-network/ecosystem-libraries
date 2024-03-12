@@ -36,7 +36,7 @@ pub enum CryptographicIdentity {
     },
 }
 
-impl PartialEq for CryptographicIdentity {
+impl core::cmp::PartialEq for CryptographicIdentity {
     fn eq(&self, other: &Self) -> bool {
         match self {
             Self::OthersKey {
@@ -72,7 +72,7 @@ impl PartialEq for CryptographicIdentity {
     }
 }
 
-impl PartialOrd for CryptographicIdentity {
+impl core::cmp::PartialOrd for CryptographicIdentity {
     fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
         match self {
             Self::OthersKey {
@@ -104,7 +104,7 @@ impl PartialOrd for CryptographicIdentity {
     }
 }
 
-impl Ord for CryptographicIdentity {
+impl core::cmp::Ord for CryptographicIdentity {
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
         match self {
             Self::OthersKey {
@@ -167,6 +167,14 @@ impl core::convert::From<crate::public::PublicKey> for CryptographicIdentity {
         Self::OthersKey {
             public: value,
         }
+    }
+}
+
+impl core::convert::From<nagara_mnemonic::MnemonicPhrase> for CryptographicIdentity {
+    fn from(value: nagara_mnemonic::MnemonicPhrase) -> Self {
+        let private_key = crate::private::PrivateKey::from(value);
+
+        Self::from(private_key)
     }
 }
 

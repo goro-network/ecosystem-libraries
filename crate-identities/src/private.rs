@@ -56,6 +56,18 @@ impl core::convert::TryFrom<&[u8]> for PrivateKey {
     }
 }
 
+impl core::convert::From<nagara_mnemonic::MnemonicPhrase> for PrivateKey {
+    fn from(value: nagara_mnemonic::MnemonicPhrase) -> Self {
+        let secret_seed = value.try_get_secret_seed("").expect("Infallible");
+        let mut inner = PrivateKeyBytes::default();
+        inner.copy_from_slice(&secret_seed[..Self::LEN_PRIVATE_KEY]);
+
+        Self {
+            inner,
+        }
+    }
+}
+
 impl PrivateKey {
     pub const EXPANSION_MODE_SR25519: schnorrkel::ExpansionMode = schnorrkel::MiniSecretKey::ED25519_MODE;
     pub const LEN_PRIVATE_KEY: usize = 32;
@@ -94,7 +106,7 @@ impl PrivateKey {
             .try_get_secret_seed(password)
             .map_err(crate::Error::from)?;
         let mut inner = PrivateKeyBytes::default();
-        inner.copy_from_slice(&secret_seed[..32]);
+        inner.copy_from_slice(&secret_seed[..Self::LEN_PRIVATE_KEY]);
 
         Ok(Self {
             inner,
