@@ -17,6 +17,26 @@ pub enum PublicKey {
     },
 }
 
+impl serde::Serialize for PublicKey {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer, {
+        let string_form = self.get_main_address();
+
+        serializer.serialize_str(&string_form)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for PublicKey {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>, {
+        let string_form = <Ss58String as serde::Deserialize<'de>>::deserialize(deserializer)?;
+
+        Self::try_from(string_form.as_str()).map_err(|_| serde::de::Error::custom("Invalid identity string"))
+    }
+}
+
 impl parity_scale_codec::CompactAs for PublicKey {
     type As = [u8; Self::LEN_PUBLIC_KEY];
 
